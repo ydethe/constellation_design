@@ -1,0 +1,132 @@
+[build-system]
+requires = [
+    "pdm-backend>=2.1.0,<3.0.0",
+
+]
+build-backend = "pdm.backend"
+
+[project]
+name = "constellation-design"
+dynamic = ["version"]
+description = "A tool to design satellite constellations"
+authors = [
+    { name = "Yann BLAUDIN DE THE", email = "yann.blaudin-de-the@thalesaleniaspace.com" },
+]
+dependencies = [
+    "rich>=13.3",
+    "setuptools-scm>=7.1",
+    "numpy>=1.24.3",
+]
+requires-python = ">=3.8"
+readme = "README.md"
+
+[project.urls]
+"Bug Tracker" = "https://bitbucket/dnfsnd/constellation-design/issues"
+Homepage = "https://bitbucket/dnfsnd/constellation-design"
+Source = "https://bitbucket/dnfsnd/constellation-design"
+
+[tool.pylint.main]
+ignore-patterns = ["kt_*.py"]
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.black]
+line-length = 100
+force-exclude = 'kt_.*.py'
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.per-file-ignores]
+"kt_sbf.py" = ["E501"]
+"kt_wg3_header.py" = ["E501"]
+"kt_wg3.py" = ["E501"]
+"kt_kass_edd.py" = ["E501"]
+"kt_egnos_edd.py" = ["E501"]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+    "--html=htmldoc/tests/report.html",
+    "--self-contained-html",
+    "--junitxml=htmldoc/junit.xml",
+    "--cov-config=tests/coverage.conf",
+    "--cov=constellation_design",
+    "--doctest-modules",
+    "--mpl",
+    "--mpl-generate-summary=html",
+    "--mpl-results-always",
+    "--mpl-baseline-path=tests/baseline",
+    "--mpl-results-path=build/htmldoc/tests/results",
+]
+testpaths = [
+    "tests/",
+]
+
+[tool.pdm.version]
+source = "scm"
+
+[tool.pdm.build]
+
+includes = [
+    "constellation_design/",
+]
+excludes = [
+    "tests",
+    "examples",
+    "build",
+    "dev",
+    "dist",
+    "mockup",
+    "ksy"
+]
+source-includes = [
+    "**/*.c",
+    "**/*.cpp",
+    "**/*.py"
+]
+editable-backend = "editables"
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "coverage-badge>=1.1.0",
+    "docstr-coverage>=2.2.0",
+    "ipython~=7.23.1",
+    "pre-commit",
+    "snakeviz>=2.1.2",
+]
+maintain = [
+    "black==22.3.0",
+    "blacken-docs==1.12.1",
+    "git-changelog>=1.0",
+]
+quality = [
+    "mypy>=1.2.0",
+    "ruff>=0.0.246",
+]
+doc = [
+    "pdoc3~=0.10.0",
+    "pylint>=2.15.3",
+]
+test = [
+    "pytest~=7.1.3",
+    "pytest-cov~=3.0.0",
+    "pytest-mock~=3.8.2",
+    "pytest-instafail~=0.4.2",
+    "pytest-picked~=0.4.6",
+    "pytest-sugar~=0.9.5",
+    "pytest-html~=3.1.1",
+    "pytest-mpl~=0.16.1",
+]
+
+[tool.pdm.scripts]
+site_packages = true
+doc.shell = """\
+    mkdir -p htmldoc/constellation_design
+    pdoc --html --force --config latex_math=True -o htmldoc constellation_design
+    coverage html -d htmldoc/coverage --rcfile tests/coverage.conf
+    docstr-coverage src/constellation_design -miP -sp -is -idel --skip-file-doc --exclude ".*/kt.*.py" --badge=htmldoc/constellation_design/doc_badge.svg
+    coverage-badge -f -o htmldoc/constellation_design/cov_badge.svg
+"""
+baseline.shell = "pytest --mpl-generate-path=tests/baseline tests"

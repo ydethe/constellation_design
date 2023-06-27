@@ -1,0 +1,16 @@
+# Changes here will be overwritten by Copier
+_commit: v0.6.0
+_src_path: gl:ydethe/pdm-copier
+author_email: yann.blaudin-de-the@thalesaleniaspace.com
+author_name: Yann BLAUDIN DE THE
+copyright_date: '2023'
+copyright_license: MIT License
+min_python_version: '3.8'
+project_description: A tool to design satellite constellations
+project_name: constellation_design
+python_package_import_name: constellation_design
+repository_name: constellation-design
+repository_namespace: dnfsnd
+repository_provider: bitbucket
+use_c_extension: false
+use_pytest_mpl: true
