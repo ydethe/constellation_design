@@ -16,6 +16,9 @@ dependencies = [
     "rich>=13.3",
     "setuptools-scm>=7.1",
     "numpy>=1.24.3",
+    "scipy>=1.9.3",
+    "matplotlib>=3.7.1",
+    "pymoo>=0.6.0.1",
 ]
 requires-python = ">=3.8"
 readme = "README.md"
@@ -34,6 +37,10 @@ max-line-length = 100
 [tool.black]
 line-length = 100
 force-exclude = 'kt_.*.py'
+
+[[tool.mypy.overrides]]
+module = ["pymoo.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100
