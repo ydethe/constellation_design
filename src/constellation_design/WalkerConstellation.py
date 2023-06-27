@@ -13,6 +13,7 @@ class WalkerConstellation:
 
     Args:
         name: Name of the constellation
+        sma : Semi-major axis (m)
         inc: Inclination of orbital planes (deg)
         firstraan: RAAN of the first orbital plane (deg)
         t: Number of satellites
@@ -22,7 +23,6 @@ class WalkerConstellation:
     """
 
     def __init__(self, name: str, sma: float, inc: float, firstraan: float, t: int, p: int, f: int):
-
         # Name
         self.name = str(name)
 
@@ -37,8 +37,10 @@ class WalkerConstellation:
 
         # Number of satellites
         self.t = int(t)
+
         # Number of equally spaced planes
         self.p = int(p)
+
         # Relative spacing between satellites in adjacent planes
         self.f = int(f)
 
