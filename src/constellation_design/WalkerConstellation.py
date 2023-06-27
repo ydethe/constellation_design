@@ -59,7 +59,7 @@ class WalkerConstellation:
             for idxS in range(s):
                 meanAnomaly = idxP * self.f * 360.0 / self.t + idxS * 360.0 / s
 
-                nameSat = self.name + "_" + str(s * idxP + idxS)
+                nameSat = f"{self.name}{s * idxP + idxS}"
 
                 satCur = CircleSatellite.fromOrbitalElements(
                     name=nameSat,
