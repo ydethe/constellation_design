@@ -5,7 +5,7 @@ from blocksim.Simulation import Simulation
 from blocksim.gnss.GNSSTracker import GNSSTracker
 from blocksim.control.Route import Group
 from blocksim.gnss.GNSSReceiver import GNSSReceiver
-from blocksim.utils import rad, deg
+from blocksim.utils import rad
 from blocksim.loggers.Logger import Logger
 from blocksim.graphics.BFigure import FigureFactory
 from blocksim.graphics import showFigures
@@ -23,8 +23,8 @@ def build_sim(sma: float, inc: float, firstraan: float, t: int, p: int, f: int) 
     rec = GNSSReceiver(
         name="rec",
         nsat=t,
-        lon=rad(43.60510103575826),
-        lat=rad(1.4439216490854043),
+        lat=rad(43.60510103575826),
+        lon=rad(1.4439216490854043),
         alt=0,
         tsync=t0,
     )
@@ -65,16 +65,11 @@ def build_sim(sma: float, inc: float, firstraan: float, t: int, p: int, f: int) 
     sim.connect("tkr.measurement", "rec.measurements")
     sim.connect("tkr.ephemeris", "rec.ephemeris")
 
-    tps = np.linspace(0, 3600, 60)
-    tps = tps[:3]
+    tps = np.linspace(0, 3600, 30)
     sim.simulate(tps, progress_bar=True)
 
     log = sim.getLogger()
     print(log.getRawValue("tkr_vissat_n"))
-
-    fig = FigureFactory.create()
-    gs = fig.add_gridspec(1, 1)
-    axe = fig.add_baxe(title="", spec=gs[0, 0])
 
     kmax = -1
     emax = -90
@@ -84,22 +79,17 @@ def build_sim(sma: float, inc: float, firstraan: float, t: int, p: int, f: int) 
             emax = ec
             kmax = k
 
-    print(deg(log.getRawValue(f"tkr_obscoord_azim{kmax}")))
-    axe.plot((log.getRawValue("t"), deg(log.getRawValue(f"tkr_obscoord_elev{kmax}"))))
-
     fig = FigureFactory.create()
     gs = fig.add_gridspec(1, 1)
     axe = fig.add_baxe(title="", spec=gs[0, 0], projection=AxeProjection.PLATECARREE)
 
-    pt = (rec.lat, rec.lon)
+    pt = (rec.lon, rec.lat)
     axe.plotDeviceReach(coord=pt, elev_min=tkr.elev_mask, sat_alt=sma - Req, color="blue")
 
-    s = satellites[kmax]
-    print(kmax)
-    print(s.getName())
-    # for s in satellites:
-    traj = s.getTrajectoryFromLogger(log, color="red")
-    axe.plot(traj, linewidth=4)
+    print(f"Highest sat: {satellites[kmax].getName() }")
+    for s in satellites:
+        traj = s.getTrajectoryFromLogger(log)
+        axe.plot(traj, linewidth=4)
 
     showFigures()
 
