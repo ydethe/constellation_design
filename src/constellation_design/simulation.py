@@ -1,22 +1,18 @@
 from datetime import datetime, timezone
 
+import more_itertools as mit
 import numpy as np
 from blocksim.Simulation import Simulation
 from blocksim.gnss.GNSSTracker import GNSSTracker
 from blocksim.control.Route import Group
 from blocksim.gnss.GNSSReceiver import GNSSReceiver
 from blocksim.utils import rad
-from blocksim.loggers.Logger import Logger
-from blocksim.graphics.BFigure import FigureFactory
-from blocksim.graphics import showFigures
-from blocksim.graphics.GraphicSpec import AxeProjection
-from blocksim.constants import Req
 
 
 from .WalkerConstellation import WalkerConstellation
 
 
-def build_sim(sma: float, inc: float, firstraan: float, t: int, p: int, f: int) -> Logger:
+def build_sim(sma: float, inc: float, firstraan: float, t: int, p: int, f: int) -> float:
     t0 = datetime(2023, 6, 27, 12, 0, 0, tzinfo=timezone.utc)
     sim = Simulation()
 
@@ -36,6 +32,8 @@ def build_sim(sma: float, inc: float, firstraan: float, t: int, p: int, f: int) 
 
     tkr = GNSSTracker("tkr", t)
     tkr.elev_mask = rad(20)
+    tkr.no_obs = True
+    tkr.no_meas = True
     sim.addComputer(tkr)
     sim.addComputer(rec)
 
@@ -65,32 +63,25 @@ def build_sim(sma: float, inc: float, firstraan: float, t: int, p: int, f: int) 
     sim.connect("tkr.measurement", "rec.measurements")
     sim.connect("tkr.ephemeris", "rec.ephemeris")
 
-    tps = np.linspace(0, 3600, 30)
+    tps = np.arange(0, 3 * sat.orbit_period.total_seconds(), 30)
     sim.simulate(tps, progress_bar=True)
 
     log = sim.getLogger()
-    print(log.getRawValue("tkr_vissat_n"))
 
-    kmax = -1
-    emax = -90
-    for k in range(100):
-        ec = np.max(log.getRawValue(f"tkr_obscoord_elev{k}"))
-        if ec > emax:
-            emax = ec
-            kmax = k
+    dt = tps[1] - tps[0]
+    n = log.getRawValue("tkr_vissat_n")
 
-    fig = FigureFactory.create()
-    gs = fig.add_gridspec(1, 1)
-    axe = fig.add_baxe(title="", spec=gs[0, 0], projection=AxeProjection.PLATECARREE)
+    ind_nok = np.where(n == 0)[0]
 
-    pt = (rec.lon, rec.lat)
-    axe.plotDeviceReach(coord=pt, elev_min=tkr.elev_mask, sat_alt=sma - Req, color="blue")
+    lg_max = -1
+    g_max = [1]
+    for group in mit.consecutive_groups(ind_nok):
+        lgrp = list(group)
+        lg = len(lgrp)
+        if lg > lg_max:
+            lg_max = lg
+            g_max = lgrp.copy()
 
-    print(f"Highest sat: {satellites[kmax].getName() }")
-    for s in satellites:
-        traj = s.getTrajectoryFromLogger(log)
-        axe.plot(traj, linewidth=4)
+    worst_blind_time = (len(g_max) - 1) * dt
 
-    showFigures()
-
-    return log
+    return worst_blind_time

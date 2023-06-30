@@ -2,7 +2,7 @@ from constellation_design.simulation import build_sim
 
 
 def test_sim():
-    build_sim(
+    worst_blind_time = build_sim(
         sma=7000000.0,
         inc=85.0,
         firstraan=10.0,
@@ -11,7 +11,7 @@ def test_sim():
         f=1,
     )
 
-    # print(log.getRawValue("tkr_vissat_n"))
+    print(worst_blind_time)
 
 
 if __name__ == "__main__":
