@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
 
-from numpy import sqrt, pi
+from numpy import sqrt, pi, arccos, cos, sin
 import numpy as np
 import scipy.linalg as lin
-
+from scipy.optimize import root_scalar
+from matplotlib import pyplot as plt
 from blocksim.satellite.Satellite import ASatellite, CircleSatellite
-from blocksim.utils import itrf_to_teme, rotation_matrix
-from blocksim.constants import mu
+from blocksim.utils import itrf_to_teme, rotation_matrix, llavpa_to_itrf, rad, deg, itrf_to_azeld
+from blocksim.constants import mu, Req
 
 
 def mat_mvt_teme(t, tsync, pv0):
@@ -57,22 +58,65 @@ def mat_teme_itrf(t, tsync):
 
 
 def main():
+    h = 600e3
+    r = Req + h
+
     tsync = datetime(2023, 1, 7, 13, 0, 0, tzinfo=timezone.utc)
     sat = CircleSatellite.fromOrbitalElements(
-        name="sat", tsync=tsync, a=6378137 + 600e3, inc=45 * pi / 180, argp=0.5
+        name="sat", tsync=tsync, a=r, inc=45 * pi / 180, argp=0.5
     )
+    Torb = sat.orbit_period.total_seconds()
     pv0 = sat.getGeocentricITRFPositionAt(0)
-    M0 = pv0[:3]
+    M0 = pv0[:3] / r  # Normalize the satellite position
 
-    for t in np.arange(10):
+    lat = rad(43.60510103575826)
+    lon = rad(1.4439216490854043)
+    alt = 0
+    elev = rad(20)
+    pv_rx = llavpa_to_itrf(np.array([lon, lat, alt, 0, 0, 0]))
+    pos_rx = pv_rx[:3] / lin.norm(pv_rx[:3])
+
+    d = -Req * sin(elev) + sqrt(r**2 - Req**2 * cos(elev) ** 2)
+    beta = arccos((d**2 + r**2 - Req**2) / (2 * r * d))
+    s = sin(elev + beta)
+
+    def fun(t):
         M1 = mat_teme_itrf(t, tsync) @ mat_mvt_teme(t, tsync, pv0) @ mat_teme_itrf(0, tsync).T @ M0
 
-        pv = sat.getGeocentricITRFPositionAt(t)
-        M1_ref = pv[:3]
+        # pv = sat.getGeocentricITRFPositionAt(t)
+        # M1_ref = pv[:3]
+        # err = M1 - M1_ref
+        # assert lin.norm(err)<1e-8
 
-        err = M1 - M1_ref
+        x = pos_rx.T @ M1
+        return x - s
 
-        print(lin.norm(err))
+    res = root_scalar(f=fun, method="secant", x0=0, x1=Torb / 2)
+    print(res)
+
+    def check_criteria():
+        tps = np.linspace(0, 5 * Torb, 501)
+        elev = np.empty_like(tps)
+        funval = np.empty_like(tps)
+        for k in range(len(tps)):
+            t = tps[k]
+            pv = sat.getGeocentricITRFPositionAt(t)
+            _, el, _, _, _, _ = itrf_to_azeld(pv_rx, pv)
+            elev[k] = el
+            funval[k] = fun(t)
+
+        fig = plt.figure()
+        axe = fig.add_subplot(211)
+        axe.grid(True)
+        axe.plot(tps, deg(elev))
+
+        axe = fig.add_subplot(212, sharex=axe)
+        axe.grid(True)
+        axe.plot(tps, funval)
+
+        plt.show()
+
+    # check_criteria()
 
 
 if __name__ == "__main__":
