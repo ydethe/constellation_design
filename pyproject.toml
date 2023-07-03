@@ -19,7 +19,6 @@ dependencies = [
     "scipy>=1.9.3",
     "matplotlib>=3.5.0",
     "pymoo>=0.6.0.1",
-    "blocksim>=0.2.1",
     "more-itertools>=9.1.0",
 ]
 requires-python = ">=3.8"
@@ -104,7 +103,7 @@ dev = [
     "ipython~=7.23.1",
     "pre-commit",
     "snakeviz>=2.1.2",
-    # "-e file:///${PROJECT_ROOT}/../blocksim#egg=blocksim",
+    "-e file:///${PROJECT_ROOT}/../blocksim#egg=blocksim",
 ]
 maintain = [
     "black==22.3.0",

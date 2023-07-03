@@ -21,9 +21,9 @@ class MixedVariableProblem(ElementwiseProblem):
     def _evaluate(self, X: dict, out: dict, *args, **kwargs):
         inc, nsat, npla, pha, alt = X["inc"], X["nsat"], X["npla"], X["pha"], X["alt"]
 
-        f = inc + nsat + npla + pha + alt
+        inc + nsat + npla + pha + alt
 
-        out["F"] = f
+        out["F"] = nsat
 
 
 problem = MixedVariableProblem()
