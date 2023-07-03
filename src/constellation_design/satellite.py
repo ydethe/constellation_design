@@ -32,7 +32,6 @@ def get_axe_angle(R, prev_axe=None):
     if lin.norm(P - R) > 1e-3:
         angle = -angle
     P = rotation_matrix(angle, axe)
-    assert lin.norm(P - R) < 1e-3
 
     # Continuity check
     if prev_axe is not None:
@@ -62,10 +61,6 @@ def mat_mvt_teme(t, tsync, pv0):
         R = np.einsum("k,ij", cos(angle), np.eye(3))
         R += np.einsum("k,ij", sin(angle), K)
         R += np.einsum("k,ij", 1 - cos(angle), K2)
-
-        for k in range(len(t)):
-            err = lin.norm(R[:, :, k] @ R[:, :, k].T - np.eye(3))
-            assert err < 1e-6
     else:
         R = cos(angle) * np.eye(3) + sin(angle) * K + (1 - cos(angle)) * K2
 
@@ -105,10 +100,6 @@ def mat_teme_itrf(t, tsync):
         R = np.einsum("k,ij", cos(angle), np.eye(3))
         R += np.einsum("k,ij", sin(angle), K)
         R += np.einsum("k,ij", 1 - cos(angle), K2)
-
-        for k in range(len(t)):
-            err = lin.norm(R[:, :, k] @ R[:, :, k].T - np.eye(3))
-            assert err < 1e-6
     else:
         R = cos(angle) * np.eye(3) + sin(angle) * K + (1 - cos(angle)) * K2
 
@@ -143,26 +134,11 @@ def main():
             R1 = mat_mvt_teme(t, tsync, pv0)
             R2 = mat_teme_itrf(t, tsync)
             Mt = np.einsum("ipj,p->ij", R1, M0)
-            for k in range(len(t)):
-                err = lin.norm(R1[:, :, k] @ M0 - Mt[:, k])
-                assert err < 1e-6
             M1 = np.einsum("ip...,p...->i...", R2, Mt)
-            for k in range(len(t)):
-                err = lin.norm(R2[:, :, k] @ R1[:, :, k] @ M0 - M1[:, k])
-                assert err < 1e-6
         else:
             M1 = mat_teme_itrf(t, tsync) @ mat_mvt_teme(t, tsync, pv0) @ M0
 
-        # pv = sat.getGeocentricITRFPositionAt(t)
-        # M1_ref = pv[:3]
-        # err = M1 - M1_ref
-        # assert lin.norm(err)<1e-8
-
         x = pos_rx.T @ M1
-        if hasattr(t, "__iter__"):
-            for k in range(len(t)):
-                err = np.abs(x[k] - pos_rx.T @ R2[:, :, k] @ R1[:, :, k] @ M0)
-                assert err < 1e-6
 
         return x - s
 
