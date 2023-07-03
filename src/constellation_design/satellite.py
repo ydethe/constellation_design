@@ -53,12 +53,13 @@ def mat_mvt_teme(t, tsync, pv0):
     angle = sat_puls * t
 
     n = np.cross(pos, vel)
-    kx, ky, kz = n / lin.norm(n)
+    axe = n / lin.norm(n)
+    kx, ky, kz = axe
     K = np.array([[0, -kz, ky], [kz, 0, -kx], [-ky, kx, 0]])
-    K2 = K @ K
+    K2 = np.einsum("i,j", axe, axe)
 
     if hasattr(t, "__iter__"):
-        R = np.einsum("k,ij", np.ones_like(angle), np.eye(3))
+        R = np.einsum("k,ij", cos(angle), np.eye(3))
         R += np.einsum("k,ij", sin(angle), K)
         R += np.einsum("k,ij", 1 - cos(angle), K2)
 
@@ -66,7 +67,7 @@ def mat_mvt_teme(t, tsync, pv0):
             err = lin.norm(R[:, :, k] @ R[:, :, k].T - np.eye(3))
             assert err < 1e-6
     else:
-        R = np.eye(3) + sin(angle) * K + (1 - cos(angle)) * K2
+        R = cos(angle) * np.eye(3) + sin(angle) * K + (1 - cos(angle)) * K2
 
     return R
 
@@ -92,23 +93,24 @@ def mat_teme_itrf(t, tsync):
     # Computing the rotation angle and axis
     t_teme = (jd_ut1 - T0 + fraction_ut1) / 36525.0
     g = 67310.54841 + (8640184.812866 + (0.093104 + (-6.2e-6) * t_teme) * t_teme) * t_teme
-    angle = (jd_ut1 % 1.0 + fraction_ut1 + g / DAY_S % 1.0) % 1.0 * 2 * pi
+    angle = -(jd_ut1 % 1.0 + fraction_ut1 + g / DAY_S % 1.0) % 1.0 * 2 * pi
 
-    kx, ky, kz = 0.0, 0.0, 1.0
+    axe = np.array([0.0, 0.0, 1.0])
+    kx, ky, kz = axe
     K = np.array([[0, -kz, ky], [kz, 0, -kx], [-ky, kx, 0]])
-    K2 = K @ K
+    K2 = np.einsum("i,j", axe, axe)
 
     # Computing the rotation matrix
     if hasattr(t, "__iter__"):
-        R = np.einsum("k,ij", np.ones_like(angle), np.eye(3))
-        R += np.einsum("k,ij", -sin(angle), K)
+        R = np.einsum("k,ij", cos(angle), np.eye(3))
+        R += np.einsum("k,ij", sin(angle), K)
         R += np.einsum("k,ij", 1 - cos(angle), K2)
 
         for k in range(len(t)):
             err = lin.norm(R[:, :, k] @ R[:, :, k].T - np.eye(3))
             assert err < 1e-6
     else:
-        R = np.eye(3) - sin(angle) * K + (1 - cos(angle)) * K2
+        R = cos(angle) * np.eye(3) + sin(angle) * K + (1 - cos(angle)) * K2
 
     return R
 
@@ -165,7 +167,7 @@ def main():
         return x - s
 
     def check_criteria():
-        tps = np.linspace(0, 86400 * 5, 128 * 5 + 1)
+        tps = np.linspace(0, 86400, 2048)
         elev = np.empty_like(tps)
         funval2 = np.empty_like(tps)
         funval = fun(tps)
@@ -184,7 +186,7 @@ def main():
         axe = fig.add_subplot(212, sharex=axe)
         axe.grid(True)
         axe.plot(tps, funval, label="vector")
-        axe.plot(tps, funval2, label="point")
+        axe.scatter(tps, funval2, label="point", marker=".")
         axe.legend()
         # axe.plot(tps, funval - funval2)
 
