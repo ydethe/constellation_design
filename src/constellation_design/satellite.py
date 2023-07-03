@@ -3,9 +3,16 @@ from datetime import datetime, timezone
 from numpy import sqrt, pi, arccos, cos, sin
 import numpy as np
 import scipy.linalg as lin
+from scipy.optimize import minimize_scalar, root_scalar
 from matplotlib import pyplot as plt
 from blocksim.satellite.Satellite import ASatellite, CircleSatellite
-from blocksim.utils import itrf_to_teme, llavpa_to_itrf, rad, deg, itrf_to_azeld, rotation_matrix
+from blocksim.utils import (
+    itrf_to_teme,
+    llavpa_to_itrf,
+    rad,
+    rotation_matrix,
+    FloatArr,
+)
 from blocksim.constants import mu, Req
 
 
@@ -106,6 +113,99 @@ def mat_teme_itrf(t, tsync):
     return R
 
 
+def fun(t, tsync, pv0, M0, pos_rx, s):
+    if hasattr(t, "__iter__"):
+        R1 = mat_mvt_teme(t, tsync, pv0)
+        R2 = mat_teme_itrf(t, tsync)
+        Mt = np.einsum("ipj,p->ij", R1, M0)
+        M1 = np.einsum("ip...,p...->i...", R2, Mt)
+    else:
+        M1 = mat_teme_itrf(t, tsync) @ mat_mvt_teme(t, tsync, pv0) @ M0
+
+    x = pos_rx.T @ M1
+
+    return s - x
+
+
+def find_rise_set(
+    sat: CircleSatellite,
+    pos_rx: FloatArr,
+    elevation: float,
+    Tstart: float,
+) -> dict:
+    """
+
+    Args:
+        sat: Analysed satellite
+        pv0: Initial ITRF position & velocity of the satellite (m & m/s)
+        pos_rx: ITRF position of the user (m)
+        elevation: Elevation threshold (rad)
+        Tstart:
+        Torb:
+        Tup_max:
+
+    """
+    Torb = sat.orbit_period.total_seconds()
+    pv0 = sat.getGeocentricITRFPositionAt(0)
+    r = lin.norm(pv0[:3])
+    M0 = (
+        mat_teme_itrf(0, sat.tsync).T @ pv0[:3] / r
+    )  # Normalize the satellite position in TEME frame
+    d = -Req * sin(elevation) + sqrt(r**2 - Req**2 * cos(elevation) ** 2)
+    beta = arccos((d**2 + r**2 - Req**2) / (2 * r * d))
+    alpha = pi / 2 - (elevation + beta)
+    Tup_max = Torb * alpha / pi
+    s = cos(alpha)
+
+    culmination = minimize_scalar(
+        fun=fun,
+        args=(sat.tsync, pv0, M0, pos_rx, s),
+        method="bounded",
+        bracket=(Tstart, Tstart + Torb * 1.5),
+        bounds=(Tstart, Tstart + Torb * 1.5),
+    )
+    dat = {"culmination": culmination.x, "Tup_max": Tup_max}
+    if fun(culmination.x, sat.tsync, pv0, M0, pos_rx, s) < 0:
+        rise = root_scalar(
+            f=fun,
+            args=(sat.tsync, pv0, M0, pos_rx, s),
+            bracket=(culmination.x - Tup_max / 2, culmination.x),
+        )
+        dat["rise"] = rise.root
+        set = root_scalar(
+            f=fun,
+            args=(sat.tsync, pv0, M0, pos_rx, s),
+            bracket=(culmination.x, culmination.x + Tup_max / 2),
+        )
+        dat["set"] = set.root
+
+    return dat
+
+
+def check_criteria(sat, pos_rx, elevation, dat):
+    Torb = sat.orbit_period.total_seconds()
+    pv0 = sat.getGeocentricITRFPositionAt(0)
+    r = lin.norm(pv0[:3])
+    M0 = (
+        mat_teme_itrf(0, sat.tsync).T @ pv0[:3] / r
+    )  # Normalize the satellite position in TEME frame
+    d = -Req * sin(elevation) + sqrt(r**2 - Req**2 * cos(elevation) ** 2)
+    beta = arccos((d**2 + r**2 - Req**2) / (2 * r * d))
+    alpha = pi / 2 - (elevation + beta)
+    Tup_max = Torb * alpha / pi
+    s = cos(alpha)
+
+    tps = np.linspace(dat["culmination"] - Tup_max, dat["culmination"] + Tup_max, 201)
+    funval = fun(tps, sat.tsync, pv0, M0, pos_rx, s)
+
+    fig = plt.figure()
+    axe = fig.add_subplot(111)
+    axe.grid(True)
+    axe.plot(tps, funval, label="vector")
+
+    plt.show()
+
+
 def main():
     h = 600e3
     r = Req + h
@@ -114,9 +214,6 @@ def main():
     sat = CircleSatellite.fromOrbitalElements(
         name="sat", tsync=tsync, a=r, inc=45 * pi / 180, argp=0.5
     )
-    sat.orbit_period.total_seconds()
-    pv0 = sat.getGeocentricITRFPositionAt(0)
-    M0 = mat_teme_itrf(0, tsync).T @ pv0[:3] / r  # Normalize the satellite position in TEME frame
 
     lat = rad(43.60510103575826)
     lon = rad(1.4439216490854043)
@@ -125,50 +222,14 @@ def main():
     pv_rx = llavpa_to_itrf(np.array([lon, lat, alt, 0, 0, 0]))
     pos_rx = pv_rx[:3] / lin.norm(pv_rx[:3])
 
-    d = -Req * sin(elev) + sqrt(r**2 - Req**2 * cos(elev) ** 2)
-    beta = arccos((d**2 + r**2 - Req**2) / (2 * r * d))
-    s = sin(elev + beta)
+    Tstart = 0
+    dat = dict()
+    while "rise" not in dat.keys():
+        dat = find_rise_set(sat, pos_rx, elev, Tstart)
+        Tstart += dat["culmination"] + dat["Tup_max"] / 2
+        print(dat)
 
-    def fun(t):
-        if hasattr(t, "__iter__"):
-            R1 = mat_mvt_teme(t, tsync, pv0)
-            R2 = mat_teme_itrf(t, tsync)
-            Mt = np.einsum("ipj,p->ij", R1, M0)
-            M1 = np.einsum("ip...,p...->i...", R2, Mt)
-        else:
-            M1 = mat_teme_itrf(t, tsync) @ mat_mvt_teme(t, tsync, pv0) @ M0
-
-        x = pos_rx.T @ M1
-
-        return x - s
-
-    def check_criteria():
-        tps = np.linspace(0, 86400, 2048)
-        elev = np.empty_like(tps)
-        funval2 = np.empty_like(tps)
-        funval = fun(tps)
-        for k in range(len(tps)):
-            t = tps[k]
-            pv = sat.getGeocentricITRFPositionAt(t)
-            _, el, _, _, _, _ = itrf_to_azeld(pv_rx, pv)
-            elev[k] = el
-            funval2[k] = fun(t)
-
-        fig = plt.figure()
-        axe = fig.add_subplot(211)
-        axe.grid(True)
-        axe.plot(tps, deg(elev))
-
-        axe = fig.add_subplot(212, sharex=axe)
-        axe.grid(True)
-        axe.plot(tps, funval, label="vector")
-        axe.scatter(tps, funval2, label="point", marker=".")
-        axe.legend()
-        # axe.plot(tps, funval - funval2)
-
-        plt.show()
-
-    check_criteria()
+    check_criteria(sat, pos_rx, elev, dat)
 
 
 if __name__ == "__main__":

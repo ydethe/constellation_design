@@ -14,3 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Added satellite.py ([a8095e2](ssh://git@git:7999/~blaudiy/constellation_design/commit/a8095e2db6c5c3d0543283473d255b99a0c2baa3) by Yann BLAUDIN DE THE).
 
+### Removed
+
+- Removed asserts ([35f558f](ssh://git@git:7999/~blaudiy/constellation_design/commit/35f558f513fe876d31c3ae1f83c3ef35715be00e) by Yann BLAUDIN DE THE).
+
