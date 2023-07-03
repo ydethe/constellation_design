@@ -3,14 +3,12 @@ from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
-from numpy import pi, sqrt
 import rich.progress as rp
 from blocksim.satellite import (
     CircleSatellite,
     generateWalkerDeltaConstellation,
 )
 from blocksim.utils import rad, llavpa_to_itrf, itrf_to_azeld
-from blocksim.constants import mu
 
 
 class EventType(Enum):
@@ -71,7 +69,6 @@ def test_sgp4():
     satellites = generateWalkerDeltaConstellation(
         "sim", sma, inc, firstraan, t, p, f, t0, prop=CircleSatellite
     )
-    2 * pi * sqrt(sma**3 / mu)
     obs = llavpa_to_itrf((lon, lat, 0, 0, 0, 0))
     events = list()
     init = list()
