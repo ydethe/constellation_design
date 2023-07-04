@@ -58,7 +58,7 @@ def analyse_timeline(init, events, total_sim_time):
     return t_blind, nsat_max
 
 
-def simulate(lat, inc, nsat, npla, pha, alt):
+def compute_elevation_mask(alt_km):
     # Parametres du probleme
     # ======================
     px = 36  # dBm
@@ -71,7 +71,7 @@ def simulate(lat, inc, nsat, npla, pha, alt):
 
     # Calculs des constantes K et Q
     # =============================
-    sma = Req + alt * 1e3
+    sma = Req + alt_km * 1e3
     K = (
         -36
         + px
@@ -109,10 +109,17 @@ def simulate(lat, inc, nsat, npla, pha, alt):
     assert len(r0) == 1
     elev_mask = arcsin(r0[0])
 
+    return elev_mask
+
+
+def simulate(lat, inc, nsat, npla, pha, alt_km):
+    elev_mask = compute_elevation_mask(alt_km)
+
     t0 = datetime(2023, 6, 27, 12, 0, 0, tzinfo=timezone.utc)
     firstraan = 0.0
     lon = 0.0
     tps_max = 5 * 86400
+    sma = Req + alt_km * 1e3
 
     satellites = generateWalkerDeltaConstellation(
         "sim", sma, inc, firstraan, nsat, npla, pha, t0, prop=CircleSatellite

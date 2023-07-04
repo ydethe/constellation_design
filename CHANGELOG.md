@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added elevation computation for CN0 constraint ([b7f0931](ssh://git@git:7999/~blaudiy/constellation_design/commit/b7f0931719b28d735a68cdbad638988cb03086ab) by Yann BLAUDIN DE THE).
 - Added satellite.py ([a8095e2](ssh://git@git:7999/~blaudiy/constellation_design/commit/a8095e2db6c5c3d0543283473d255b99a0c2baa3) by Yann BLAUDIN DE THE).
 
+### Fixed
+
+- Fixed case where no satellite is visible for the whole sim time ([bfe16c5](ssh://git@git:7999/~blaudiy/constellation_design/commit/bfe16c5d2fc1143c8272d31654181d837b0eaabd) by Yann BLAUDIN DE THE).
+
 ### Removed
 
 - Removed asserts ([35f558f](ssh://git@git:7999/~blaudiy/constellation_design/commit/35f558f513fe876d31c3ae1f83c3ef35715be00e) by Yann BLAUDIN DE THE).
