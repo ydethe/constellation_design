@@ -56,55 +56,57 @@ def analyse_timeline(init, events):
 
 
 def simulate(lat, inc, nsat, npla, pha, alt):
+    # Parametres du probleme
+    # ======================
     px = 36  # dBm
     NF = 3  # dB
     z1_J1 = 1.616339347
     eta = 0.7
     wl = clum / (2e9)
-
     cn0_lim = 46.46595211
     alpha = 0.0305
+
+    # Calculs des constantes K et Q
+    # =============================
+    sma = Req + alt * 1e3
     K = (
         -36
         + px
         - NF
         + 10
-        * log10(
-            (eta**2 * wl**2 * z1_J1**4 * (Req + alt) ** 4)
-            / (16 * pi**2 * kb * 290 * Req**4)
-        )
+        * log10((eta**2 * wl**2 * z1_J1**4 * sma**4) / (16 * pi**2 * kb * 290 * Req**4))
     )
     Q = 10 ** ((K - cn0_lim) / 20)
-    r = Req + 1200e3
 
+    # Calcul de l'élévation
+    # =====================
     p = Polynomial(
         [
             alpha,
             2,
             -(
-                (2 * alpha**2 - 1) * r**2
+                (2 * alpha**2 - 1) * sma**2
                 + (1 - 2 * alpha**2) * Req**2
                 + 2 * alpha * Q * Req
                 + Q**2
             )
-            / (alpha * r**2 - alpha * Req**2),
-            -(4 * alpha * r**2 - 4 * alpha * Req**2 + 2 * Q * Req)
-            / (alpha * r**2 - alpha * Req**2),
-            ((alpha**2 - 2) * r**2 + (2 - alpha**2) * Req**2 + 2 * alpha * Q * Req)
-            / (alpha * r**2 - alpha * Req**2),
-            (2 * alpha * r**2 - 2 * alpha * Req**2 + 2 * Q * Req)
-            / (alpha * r**2 - alpha * Req**2),
+            / (alpha * sma**2 - alpha * Req**2),
+            -(4 * alpha * sma**2 - 4 * alpha * Req**2 + 2 * Q * Req)
+            / (alpha * sma**2 - alpha * Req**2),
+            ((alpha**2 - 2) * sma**2 + (2 - alpha**2) * Req**2 + 2 * alpha * Q * Req)
+            / (alpha * sma**2 - alpha * Req**2),
+            (2 * alpha * sma**2 - 2 * alpha * Req**2 + 2 * Q * Req)
+            / (alpha * sma**2 - alpha * Req**2),
             1 / alpha,
         ]
     )
 
-    r = p.roots()
-    r0 = r[np.where((r > 0) & (r < 1))[0]]
+    rts = p.roots()
+    r0 = rts[np.where((rts > arcsin(alpha)) & (rts < 1) & (np.abs(np.imag(rts)) < 1e-9))[0]]
     assert len(r0) == 1
     elev_mask = arcsin(r0[0])
 
     t0 = datetime(2023, 6, 27, 12, 0, 0, tzinfo=timezone.utc)
-    sma = Req + alt * 1000
     firstraan = 0.0
     lon = 0.0
     tps_max = 5 * 86400

@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import numpy as np
 from numpy import pi
 
@@ -15,10 +17,10 @@ from .simulate import simulate
 class MixedVariableProblem(ElementwiseProblem):
     def __init__(self, **kwargs):
         vars = {
-            "inc": Real(bounds=(0, pi)),
+            "inc": Real(bounds=(0, pi / 2)),
             # "nsat": Integer(bounds=(1, 1000)),
             "npla": Integer(bounds=(1, 36)),
-            "pha": Real(bounds=(0, 360)),
+            "pha": Integer(bounds=(0, 360)),
             "alt": Real(bounds=(500, 1500)),
         }
         self.nsat_per_plane = 1
@@ -32,7 +34,12 @@ class MixedVariableProblem(ElementwiseProblem):
         t_blind[0], _, _, elev_mask = simulate(0, inc, nsat, npla, pha, alt)
         t_blind[1], _, _, _ = simulate(pi / 4, inc, nsat, npla, pha, alt)
         t_blind[2], _, _, _ = simulate(80 * pi / 180, inc, nsat, npla, pha, alt)
-        print(inc * 180 / pi, npla, pha, alt / 1000, elev_mask * 180 / pi, np.max(t_blind))
+        tb = timedelta(seconds=np.max(t_blind))
+        print(
+            f"inc: {inc * 180 / pi:.1f}, npla: {npla},"
+            f" pha: {pha}, alt: {alt :.1f}, elev: { elev_mask * 180 / pi:.1f},"
+            f" t_blind: {tb}"
+        )
 
         out["F"] = nsat
         out["G"] = t_blind @ t_blind - 3600**2

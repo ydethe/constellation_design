@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
+- Added elevation computation for CN0 constraint ([b7f0931](ssh://git@git:7999/~blaudiy/constellation_design/commit/b7f0931719b28d735a68cdbad638988cb03086ab) by Yann BLAUDIN DE THE).
 - Added satellite.py ([a8095e2](ssh://git@git:7999/~blaudiy/constellation_design/commit/a8095e2db6c5c3d0543283473d255b99a0c2baa3) by Yann BLAUDIN DE THE).
 
 ### Removed
