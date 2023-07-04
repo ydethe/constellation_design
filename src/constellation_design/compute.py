@@ -46,6 +46,7 @@ class MixedVariableProblem(ElementwiseProblem):
 
 
 def optimize():
+    # BUG : inc: 1.6, npla: 33, pha: 212, alt: 1241.0, elev: 29.8, t_blind: 0:00:00
     problem = MixedVariableProblem()
 
     algorithm = MixedVariableGA(pop=10)

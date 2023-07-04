@@ -5,7 +5,7 @@ from enum import Enum
 import numpy as np
 from numpy import arcsin, pi, log10
 from numpy.polynomial import Polynomial
-from blocksim.satellite import (
+from blocksim.satellite.Satellite import (
     CircleSatellite,
     generateWalkerDeltaConstellation,
 )
@@ -25,7 +25,7 @@ class Event:
     date: float
 
 
-def analyse_timeline(init, events):
+def analyse_timeline(init, events, total_sim_time):
     tl = []
     for ksat, sat in enumerate(events):
         for e in sat:
@@ -51,6 +51,9 @@ def analyse_timeline(init, events):
                 raise AssertionError
         if nsat_max < nsat:
             nsat_max = nsat
+
+    if nsat_max == 0:
+        t_blind = total_sim_time
 
     return t_blind, nsat_max
 
@@ -125,6 +128,6 @@ def simulate(lat, inc, nsat, npla, pha, alt):
             sat.find_events(obs, t0=0, t1=tps_max, elevation=elev_mask),
         )
 
-    t_blind, nsat_max = analyse_timeline(np.array(init), events)
+    t_blind, nsat_max = analyse_timeline(np.array(init), events, tps_max)
 
     return t_blind, nsat_max, tps_max, elev_mask
