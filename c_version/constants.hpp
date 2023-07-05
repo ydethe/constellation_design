@@ -28,4 +28,6 @@ const double DAY_S = 86400.0;
 
 const double T0 = 2451545.0;
 
+const double z1_J1 = 1.616339347;
+
 #endif

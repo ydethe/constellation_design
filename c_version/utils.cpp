@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+#include <unsupported/Eigen/Polynomials>
 #include <nlopt.h>
 
 #include "constants.hpp"
@@ -96,8 +97,8 @@ void theta_GMST1982(double jd_ut1, double fraction_ut1, double *theta, double *t
     double t = (jd_ut1 - T0 + fraction_ut1) / 36525.0;
     double g = 67310.54841 + (8640184.812866 + (0.093104 + (-6.2e-6) * t) * t) * t;
     double dg = 8640184.812866 + (0.093104 * 2.0 + (-6.2e-6 * 3.0) * t) * t;
-    *theta = fmod(fmod(jd_ut1, 1.0) + fraction_ut1 + fmod(g / DAY_S, 1.0), 1.) * M_PI*2;
-    *theta_dot = (1.0 + dg / (DAY_S * 36525.0)) * M_PI*2;
+    *theta = fmod(fmod(jd_ut1, 1.0) + fraction_ut1 + fmod(g / DAY_S, 1.0), 1.) * M_PI * 2;
+    *theta_dot = (1.0 + dg / (DAY_S * 36525.0)) * M_PI * 2;
 }
 
 VectorXd orbital_to_teme(double sma, double ecc, double argp, double inc, double mano, double node)
@@ -206,3 +207,48 @@ AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal)
     return R;
 }
 
+double compute_elevation_mask(double px_dbm, double nf_db, double eta, double fcarrier_mhz, double cn0_lim_dbhz, double alpha, double t0_k, double alt_km)
+{
+    // Parametres du probleme
+    // ======================
+    const double wl = clum / (fcarrier_mhz * 1e6);
+
+    // Calculs des constantes K et Q
+    // =============================
+    const double sma = Req + alt_km * 1e3;
+    const double K = (-36 + px_dbm - nf_db + 10 * log10((pow(eta * wl, 2) * pow(z1_J1 * sma, 4)) / (pow(4 * M_PI, 2) * kb * t0_k * pow(Req, 4))));
+    const double Q = pow(10, (K - cn0_lim_dbhz) / 20);
+    const double sma2 = pow(sma, 2);
+    const double alpha2 = pow(alpha, 2);
+    const double req2 = pow(Req, 2);
+    const double q2 = pow(Q, 2);
+
+    // Calcul de l'élévation
+    // =====================
+    Eigen::VectorXd coeff(7);
+    coeff << alpha,
+        2,
+        -(
+            (2 * alpha2 - 1) * sma2 + (1 - 2 * alpha2) * req2 + 2 * alpha * Q * Req + q2) /
+            (alpha * sma2 - alpha * req2),
+        -(4 * alpha * sma2 - 4 * alpha * req2 + 2 * Q * Req) / (alpha * sma2 - alpha * req2),
+        ((alpha2 - 2) * sma2 + (2 - alpha2) * req2 + 2 * alpha * Q * Req) / (alpha * sma2 - alpha * req2),
+        (2 * alpha * sma2 - 2 * alpha * req2 + 2 * Q * Req) / (alpha * sma2 - alpha * req2),
+        1 / alpha;
+
+    Eigen::PolynomialSolver<double, Eigen::Dynamic> solver;
+    solver.compute(coeff);
+    const Eigen::PolynomialSolver<double, Eigen::Dynamic>::RootsType &r = solver.roots();
+
+    double re, im,re0;
+    re0=-1.;
+    for (int i = 0; i < r.size(); i++)
+    {
+        re = std::real(r(i));
+        im = std::imag(r(i));
+        if (fabs(im) < 1e-6 && re > 0 && re < 1)
+            re0=re;
+    }
+
+    return asin(re0);
+}

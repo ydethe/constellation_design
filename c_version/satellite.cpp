@@ -127,9 +127,9 @@ int Satellite::_find_events(VectorXd obs, double t0, double elevation, event_typ
     // ===========================================================
     // Computing the problem's parameters
     // ===========================================================
-    double Torb = this->getOrbitalPeriod();
+    const double Torb = this->getOrbitalPeriod();
     VectorXd pv0 = this->getGeocentricITRFPositionAt(0);
-    double r = pv0(seq(0, 2)).norm();
+    const double r = pv0(seq(0, 2)).norm();
 
     VectorXd pv_teme = itrf_to_teme(t0_epoch, pv0);
     Vector3d M0 = pv_teme(seq(0, 2));
@@ -137,11 +137,11 @@ int Satellite::_find_events(VectorXd obs, double t0, double elevation, event_typ
     Vector3d M1 = obs(seq(0, 2));
     M1.normalize();
 
-    double d = -Req * sin(elevation) + sqrt(r * r - Req * Req * pow(cos(elevation), 2));
-    double beta = acos((d * d + r * r - Req * Req) / (2 * r * d));
-    double alpha = M_PI / 2 - (elevation + beta);
-    double Tup_max = Torb * alpha / M_PI;
-    double s = cos(alpha);
+    const double d = -Req * sin(elevation) + sqrt(r * r - Req * Req * pow(cos(elevation), 2));
+    const double beta = acos((d * d + r * r - Req * Req) / (2 * r * d));
+    const double alpha = M_PI / 2 - (elevation + beta);
+    const double Tup_max = Torb * alpha / M_PI;
+    const double s = cos(alpha);
     _find_event_data data = {s, this, &M0, &M1, true};
 
     // ===========================================================
@@ -162,9 +162,9 @@ int Satellite::_find_events(VectorXd obs, double t0, double elevation, event_typ
     if (nlopt_optimize(opt, x, &minf) < 0)
         return 1;
 
-    double alpha_max = acos(s - minf);
-    double d_max = sqrt(Req * Req + r * r - 2 * Req * r * cos(alpha_max));
-    double elev_max = -asin((d_max * d_max + Req * Req - r * r) / (2 * Req * d_max));
+    const double alpha_max = acos(s - minf);
+    const double d_max = sqrt(Req * Req + r * r - 2 * Req * r * cos(alpha_max));
+    const double elev_max = -asin((d_max * d_max + Req * Req - r * r) / (2 * Req * d_max));
 
     events->t_culmination = x[0];
     events->e_culmination = elev_max;
@@ -211,4 +211,8 @@ int main(int argc, char **argv)
     Satellite sat(7e6, M_PI / 3, 0.5, 1.0, 1.5);
     status = sat._find_events(obs, 0, 0.15, &events);
     std::cout << status << "," << events.t_rise << "," << events.t_culmination << "," << events.t_set << std::endl;
+
+    double elev_mask=compute_elevation_mask(36,3,0.7,2000.,46.46595211,0.0305,290,1000);
+    std::cout << elev_mask << std::endl;
+
 }
