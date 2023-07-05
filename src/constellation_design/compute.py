@@ -1,8 +1,10 @@
 from datetime import timedelta
+from multiprocessing.pool import ThreadPool
 
 import numpy as np
 from numpy import pi, sin, cos, sqrt, arcsin
 from blocksim.constants import Req
+from pymoo.core.problem import StarmapParallelization
 from pymoo.core.mixed import MixedVariableGA
 from pymoo.optimize import minimize
 from pymoo.core.problem import ElementwiseProblem
@@ -58,9 +60,17 @@ class NbSatMinimization(ElementwiseProblem):
 
 
 def nb_sat_min():
-    problem = NbSatMinimization()
+    # https://pymoo.org/problems/parallelization.html#Threads
 
-    algorithm = MixedVariableGA(pop=10)
+    # initialize the thread pool and create the runner
+    n_threads = 8
+    pool = ThreadPool(n_threads)
+    runner = StarmapParallelization(pool.starmap)
+
+    problem = NbSatMinimization(elementwise_runner=runner)
+    # problem = NbSatMinimization()
+
+    algorithm = MixedVariableGA()
 
     res = minimize(
         problem,
@@ -69,5 +79,7 @@ def nb_sat_min():
         seed=1,
         verbose=True,
     )
+
+    pool.close()
 
     print("[MIN]Best solution found: \nX = %s\nF = %s" % (res.X, res.F))

@@ -21,5 +21,5 @@ def test_optim():
 
 
 if __name__ == "__main__":
-    # test_sgp4()
-    test_optim()
+    test_sgp4()
+    # test_optim()

@@ -127,6 +127,7 @@ def simulate(lat, inc, nsat, npla, pha, alt_km):
     obs = llavpa_to_itrf((lon, lat, 0, 0, 0, 0))
     events = list()
     init = list()
+    sat: CircleSatellite
     for sat in satellites:
         pv_sat = sat.getGeocentricITRFPositionAt(0)
         _, el0, _, _, _, _ = itrf_to_azeld(obs, pv_sat)
