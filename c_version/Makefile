@@ -2,7 +2,7 @@ Q=@
 
 SRC := $(wildcard *.cpp)
 OBJ := $(patsubst %.cpp,%.o,$(SRC))
-
+CPPFLAGS := -Os
 
 .PHONY: default run clean
 
@@ -14,7 +14,7 @@ test.exe: $(OBJ)
 
 %.o: %.cpp
 	@echo Compiling $@
-	$(Q)g++ -c $< -o $@ -I/usr/include/eigen3
+	$(Q)g++ -c $< -o $@ -I/usr/include/eigen3 $(CPPFLAGS)
 
 run: test.exe
 	@echo Running $<
