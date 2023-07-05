@@ -89,7 +89,7 @@ AngleAxisd Satellite::getTEMEOrbitRotationMatrix(double t)
 
 double Satellite::getOrbitalPeriod()
 {
-    return 2*M_PI / m_sat_puls;
+    return 2 * M_PI / m_sat_puls;
 }
 
 typedef struct
@@ -98,6 +98,7 @@ typedef struct
     Satellite *sat;
     Vector3d *M0;
     Vector3d *pos_rx;
+    bool minimize;
 } _find_event_data;
 
 double _culm_func(unsigned n, const double *x, double *grad, void *my_func_data)
@@ -113,18 +114,25 @@ double _culm_func(unsigned n, const double *x, double *grad, void *my_func_data)
 
     double v = prx.dot(R2 * R1 * M0);
 
-    // printf("t=%f, v=%f\n", t, v);
-    return d->s - v;
+    double J = d->s - v;
+
+    if (d->minimize)
+        return J;
+    else
+        return J * J;
 }
 
-void Satellite::_find_events(VectorXd obs, double t0, double elevation)
+int Satellite::_find_events(VectorXd obs, double t0, double elevation, event_type *events)
 {
+    // ===========================================================
+    // Computing the problem's parameters
+    // ===========================================================
     double Torb = this->getOrbitalPeriod();
     VectorXd pv0 = this->getGeocentricITRFPositionAt(0);
     double r = pv0(seq(0, 2)).norm();
 
-    VectorXd pv_teme = itrf_to_teme(t0_epoch,pv0);
-    Vector3d M0=pv_teme(seq(0,2));
+    VectorXd pv_teme = itrf_to_teme(t0_epoch, pv0);
+    Vector3d M0 = pv_teme(seq(0, 2));
     M0.normalize();
     Vector3d M1 = obs(seq(0, 2));
     M1.normalize();
@@ -134,49 +142,73 @@ void Satellite::_find_events(VectorXd obs, double t0, double elevation)
     double alpha = M_PI / 2 - (elevation + beta);
     double Tup_max = Torb * alpha / M_PI;
     double s = cos(alpha);
+    _find_event_data data = {s, this, &M0, &M1, true};
 
+    // ===========================================================
+    // Setting up te optimizer
+    // ===========================================================
     double lb[2] = {t0, t0 + 1.2 * Torb};
-    std::cout << std::setprecision(10) << "d: " << d << std::endl;
-    std::cout << "beta: " << beta << std::endl;
-    std::cout << "alpha: " << alpha << std::endl;
-    std::cout << "Tup_max: " << Tup_max << std::endl;
-    std::cout << "s: " << s << std::endl;
-    std::cout << "pos0: " << pv0(0) << "," << pv0(1) << "," << pv0(2) << std::endl;
-    std::cout << "M0: " << M0(0) << "," << M0(1) << "," << M0(2) << std::endl;
-    std::cout << "M1: " << M1(0) << "," << M1(1) << "," << M1(2) << std::endl;
-
-    _find_event_data data = {s, this, &M0, &M1};
     nlopt_opt opt;
     opt = nlopt_create(NLOPT_LN_COBYLA, 1); /* algorithm and dimensionality */
     nlopt_set_lower_bounds(opt, lb);
     nlopt_set_min_objective(opt, _culm_func, &data);
-
     nlopt_set_xtol_rel(opt, 1e-4);
-
     double x[1] = {t0 + Torb / 2}; /* `*`some` `initial` `guess`*` */
     double minf;                   /* `*`the` `minimum` `objective` `value,` `upon` `return`*` */
-    if (nlopt_optimize(opt, x, &minf) < 0)
-    {
-        printf("nlopt failed!\n");
-    }
 
-    nlopt_destroy(opt);
+    // ===========================================================
+    // Calling the optimizer to find the culmination
+    // ===========================================================
+    if (nlopt_optimize(opt, x, &minf) < 0)
+        return 1;
 
     double alpha_max = acos(s - minf);
     double d_max = sqrt(Req * Req + r * r - 2 * Req * r * cos(alpha_max));
     double elev_max = -asin((d_max * d_max + Req * Req - r * r) / (2 * Req * d_max));
 
-    std::cout << "alpha_max: " << alpha_max << std::endl;
-    std::cout << std::setprecision(10) << "d_max: " << d_max << std::endl;
-    std::cout << "sin(elev_max): " << (d_max * d_max + Req * Req - r * r) / (2 * Req * d_max) << std::endl;
-    printf("t=%f s, e=%f deg\n", x[0], elev_max );
+    events->t_culmination = x[0];
+    events->e_culmination = elev_max;
+    events->t_rise = -1;
+    events->t_set = -1;
+
+    if (elev_max < elevation)
+        return 0;
+
+    // ===========================================================
+    // Searching rise time
+    // ===========================================================
+    data.minimize = false;
+    lb[0] = events->t_culmination - Tup_max;
+    lb[1] = events->t_culmination;
+    x[0] = {events->t_culmination - Tup_max / 2};
+    if (nlopt_optimize(opt, x, &minf) < 0)
+        return 2;
+
+    events->t_rise = x[0];
+
+    // ===========================================================
+    // Searching set time
+    // ===========================================================
+    lb[0] = events->t_culmination;
+    lb[1] = events->t_culmination + Tup_max;
+    x[0] = {events->t_culmination + Tup_max / 2};
+    if (nlopt_optimize(opt, x, &minf) < 0)
+        return 3;
+
+    events->t_set = x[0];
+
+    nlopt_destroy(opt);
+
+    return 0;
 }
 
 int main(int argc, char **argv)
 {
+    int status;
+    event_type events;
     VectorXd obs(6), pv_sat(6);
     obs << 4517590.87884893, 0., 4487348.40886592, 0., 0., 0.;
     Satellite sat(7e6, M_PI / 3, 0.5, 1.0, 1.5);
-    sat._find_events(obs, 0, 0.15);
-
+    status = sat._find_events(obs, 0, 0.15, &events);
+    std::cout << status << "," << events.t_rise << "," << events.t_culmination << "," << events.t_set << std::endl;
 }

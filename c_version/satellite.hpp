@@ -12,6 +12,14 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 
+
+typedef struct {
+    double t_rise;
+    double t_culmination;
+    double t_set;
+    double e_culmination;
+} event_type;
+
 class Satellite
 {
 private:
@@ -35,7 +43,7 @@ public:
     VectorXd getGeocentricITRFPositionAt(double td);
     AngleAxisd getTEMEOrbitRotationMatrix(double t);
     double getOrbitalPeriod();
-    void _find_events(VectorXd obs, double t0, double elevation);
+    int _find_events(VectorXd obs, double t0, double elevation, event_type *events);
 
 };
 
