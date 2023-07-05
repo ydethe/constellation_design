@@ -34,6 +34,7 @@ private:
     VectorXd m_initial_itrf;
 
 public:
+    Satellite();
     Satellite(
         double sma,
         double inc,

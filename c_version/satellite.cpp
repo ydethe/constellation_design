@@ -13,6 +13,15 @@ using Eigen::seq;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+
+Satellite::Satellite() {
+    m_sma = 0.;
+    m_inc = 0.;
+    m_argp = 0.;
+    m_mano = 0.;
+    m_node = 0.;
+}
+
 Satellite::Satellite(
     double sma,
     double inc,
@@ -148,20 +157,21 @@ int Satellite::_find_events(VectorXd obs, double t0, double elevation, event_typ
     // Setting up te optimizer
     // ===========================================================
     double lb[2];
+    double x[1];
+    double minf;
     nlopt_opt opt;
     opt = nlopt_create(NLOPT_LN_COBYLA, 1); /* algorithm and dimensionality */
     nlopt_set_lower_bounds(opt, lb);
     nlopt_set_min_objective(opt, _culm_func, &data);
     nlopt_set_xtol_rel(opt, 1e-4);
-    double x[1];
-    double minf;
-    
+
     // ===========================================================
     // Calling the optimizer to find the culmination
     // ===========================================================
     lb[0] = t0;
     lb[0] = t0 + 1.2 * Torb;
     x[0] = t0 + Torb / 2;
+    data.minimize = true;
     if (nlopt_optimize(opt, x, &minf) < 0)
         return 1;
 
@@ -215,7 +225,6 @@ int main(int argc, char **argv)
     status = sat._find_events(obs, 0, 0.15, &events);
     std::cout << status << "," << events.t_rise << "," << events.t_culmination << "," << events.t_set << std::endl;
 
-    double elev_mask=compute_elevation_mask(36,3,0.7,2000.,46.46595211,0.0305,290,1000);
+    double elev_mask = compute_elevation_mask(36, 3, 0.7, 2000., 46.46595211, 0.0305, 290, 1000);
     std::cout << elev_mask << std::endl;
-
 }
