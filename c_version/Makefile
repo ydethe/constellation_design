@@ -10,11 +10,11 @@ default: test.exe
 
 test.exe: $(OBJ)
 	@echo Linking $@
-	$(Q)g++ -o $@ $? -lm -lnlopt
+	$(Q)g++ -o $@ $^ -lm -lnlopt
 
 %.o: %.cpp
 	@echo Compiling $@
-	$(Q)g++ -c $< -o $@ -I/usr/include/eigen3 $(CPPFLAGS)
+	$(Q)g++ -c $< -o $@ -I/usr/local/include/eigen3 $(CPPFLAGS)
 
 run: test.exe
 	@echo Running $<

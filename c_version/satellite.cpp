@@ -147,18 +147,21 @@ int Satellite::_find_events(VectorXd obs, double t0, double elevation, event_typ
     // ===========================================================
     // Setting up te optimizer
     // ===========================================================
-    double lb[2] = {t0, t0 + 1.2 * Torb};
+    double lb[2];
     nlopt_opt opt;
     opt = nlopt_create(NLOPT_LN_COBYLA, 1); /* algorithm and dimensionality */
     nlopt_set_lower_bounds(opt, lb);
     nlopt_set_min_objective(opt, _culm_func, &data);
     nlopt_set_xtol_rel(opt, 1e-4);
-    double x[1] = {t0 + Torb / 2}; /* `*`some` `initial` `guess`*` */
-    double minf;                   /* `*`the` `minimum` `objective` `value,` `upon` `return`*` */
-
+    double x[1];
+    double minf;
+    
     // ===========================================================
     // Calling the optimizer to find the culmination
     // ===========================================================
+    lb[0] = t0;
+    lb[0] = t0 + 1.2 * Torb;
+    x[0] = t0 + Torb / 2;
     if (nlopt_optimize(opt, x, &minf) < 0)
         return 1;
 
@@ -180,7 +183,7 @@ int Satellite::_find_events(VectorXd obs, double t0, double elevation, event_typ
     data.minimize = false;
     lb[0] = events->t_culmination - Tup_max;
     lb[1] = events->t_culmination;
-    x[0] = {events->t_culmination - Tup_max / 2};
+    x[0] = events->t_culmination - Tup_max / 2;
     if (nlopt_optimize(opt, x, &minf) < 0)
         return 2;
 
@@ -191,7 +194,7 @@ int Satellite::_find_events(VectorXd obs, double t0, double elevation, event_typ
     // ===========================================================
     lb[0] = events->t_culmination;
     lb[1] = events->t_culmination + Tup_max;
-    x[0] = {events->t_culmination + Tup_max / 2};
+    x[0] = events->t_culmination + Tup_max / 2;
     if (nlopt_optimize(opt, x, &minf) < 0)
         return 3;
 
