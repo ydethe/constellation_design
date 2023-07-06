@@ -8,8 +8,8 @@ int main(int argc, char **argv)
 {
     const double lat = 80 * M_PI / 180;
     const double inc = 80 * M_PI / 180;
-    const double nsat = 20;
-    const double npla = 20;
+    const double nsat = 2;
+    const double npla = 2;
     const double pha = 193;
     const double alt_km = 607.4;
     double t_blind;

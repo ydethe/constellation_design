@@ -155,7 +155,7 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     _find_event_data data = {s, this, &M0, &M1, true};
 
     // ===========================================================
-    // Setting up te optimizer
+    // Setting up the optimizer
     // ===========================================================
     double lb[2];
     double x[1];
@@ -170,8 +170,11 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     // ===========================================================
     lb[0] = t0;
     lb[1] = t0 + 1.2 * Torb;
-    x[0] = t0 + Torb / 2;
+    x[0] = 0;
     data.minimize = true;
+    double test= _culm_func(1, x, NULL, &data);
+    x[0] = t0 + Torb / 2;
+    events->is_initially_visible=(test<0);
     nlopt_set_lower_bounds(opt, lb);
     opt_status = nlopt_optimize(opt, x, &minf);
     if (opt_status < 0)

@@ -30,6 +30,7 @@ void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, 
             if (nsat == 0)
                 *t_blind += event_dates[sorted_index] - last_blind_date;
             nsat += 1;
+            std::cout << event_dates[sorted_index] << " rise, nsat=" << nsat << ", t_blind=" << *t_blind << std::endl;
         }
         else if (event_types[sorted_index] == SET_EVENT)
         {
@@ -38,6 +39,7 @@ void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, 
                 last_blind_date = event_dates[sorted_index];
             else if (nsat < 0)
                 throw;
+            std::cout << event_dates[sorted_index] << " set, nsat=" << nsat << ", t_blind=" << *t_blind << std::endl;
         }
         else
             throw;
@@ -61,7 +63,7 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
     double elev_mask;
     Satellite sat;
     event_type events;
-    VectorXd obs(6);
+    VectorXd obs(6),pv_sat(6);
     obs = llavpa_to_itrf(0, lat, 0, 0, 0, 0);
 
     const double sma = Req + alt_km * 1e3;
@@ -72,7 +74,8 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
     const double cn0_lim_dbhz = 46.46595211;
     const double alpha = 0.0305;
     const double t0_k = 290;
-    const double t_sim = 5 * 86400;
+    // const double t_sim = 5 * 86400;
+    const double t_sim = 20000;
     const double firstraan = 0.;
     const double argp = 0.0;
     double raan, meanAnomaly, t_start;
@@ -92,17 +95,18 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
                 argp,
                 meanAnomaly * M_PI / 180,
                 raan * M_PI / 180);
-
+            
             t_start = 0;
             while (true)
             {
                 sat.find_events(obs, t_start, elev_mask, &events);
                 t_start = events.t_culmination + events.tup_max;
+                if (events.is_initially_visible)
+                    nb_sat++;
                 if (events.t_culmination > t_sim)
                     break;
                 if (events.t_rise > 0)
                 {
-                    nb_sat++;
                     event_types.push_back(RISE_EVENT);
                     event_dates.push_back(events.t_rise);
                     event_types.push_back(SET_EVENT);

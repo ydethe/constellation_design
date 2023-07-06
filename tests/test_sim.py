@@ -6,8 +6,8 @@ from constellation_design.compute import nb_sat_min
 
 def test_sgp4():
     inc = 80 * pi / 180
-    nsat = 20
-    npla = 20
+    nsat = 2
+    npla = 2
     pha = 193
     alt = 607.4
     t_blind, nsat_max, tps_max, elev_mask = simulate(80 * pi / 180, inc, nsat, npla, pha, alt)

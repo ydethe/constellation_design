@@ -19,6 +19,7 @@ typedef struct {
     double t_set;
     double e_culmination;
     double tup_max;
+    bool is_initially_visible;
 } event_type;
 
 class Satellite

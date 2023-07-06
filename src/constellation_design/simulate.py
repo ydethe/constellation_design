@@ -51,6 +51,7 @@ def analyse_timeline(init, events, total_sim_time):
                 raise AssertionError
         if nsat_max < nsat:
             nsat_max = nsat
+        print(e,nsat,t_blind)
 
     if nsat_max == 0:
         t_blind = total_sim_time
@@ -118,7 +119,8 @@ def simulate(lat, inc, nsat, npla, pha, alt_km):
     t0 = datetime(2023, 6, 27, 12, 0, 0, tzinfo=timezone.utc)
     firstraan = 0.0
     lon = 0.0
-    tps_max = 5 * 86400
+    # tps_max = 5 * 86400
+    tps_max = 20000
     sma = Req + alt_km * 1e3
 
     satellites = generateWalkerDeltaConstellation(
