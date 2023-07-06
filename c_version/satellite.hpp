@@ -18,6 +18,7 @@ typedef struct {
     double t_culmination;
     double t_set;
     double e_culmination;
+    double tup_max;
 } event_type;
 
 class Satellite
@@ -44,7 +45,7 @@ public:
     VectorXd getGeocentricITRFPositionAt(double td);
     AngleAxisd getTEMEOrbitRotationMatrix(double t);
     double getOrbitalPeriod();
-    int _find_events(VectorXd obs, double t0, double elevation, event_type *events);
+    void find_events(VectorXd obs, double t0, double elevation, event_type *events);
 
 };
 

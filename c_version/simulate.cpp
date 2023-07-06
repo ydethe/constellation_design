@@ -1,13 +1,63 @@
 #include <math.h>
+#include <iostream>
 
 #include "constants.hpp"
 #include "satellite.hpp"
 #include "utils.hpp"
 
-void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km)
+#define RISE_EVENT 0
+#define SET_EVENT 1
+
+void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, const std::vector<double> event_dates, const double total_sim_time, double *t_blind, int *nsat_max)
 {
+    int nsat, sorted_index;
+    int ns;
+    double last_blind_date;
+    std::vector<size_t> indices;
+    indices = argsort(event_dates);
+
+    ns = event_dates.size();
+    nsat = nb_sat_ini;
+    *t_blind = 0;
+    *nsat_max = 0;
+    last_blind_date = 0;
+    for (int i = 0; i < ns; i++)
+    {
+        sorted_index = indices[i];
+
+        if (event_types[sorted_index] == RISE_EVENT)
+        {
+            if (nsat == 0)
+                *t_blind += event_dates[sorted_index] - last_blind_date;
+            nsat += 1;
+        }
+        else if (event_types[sorted_index] == SET_EVENT)
+        {
+            nsat -= 1;
+            if (nsat == 0)
+                last_blind_date = event_dates[sorted_index];
+            else if (nsat < 0)
+                throw;
+        }
+        else
+            throw;
+
+        if (*nsat_max < nsat)
+            *nsat_max = nsat;
+
+    }
+
+    if (*nsat_max == 0)
+        *t_blind = total_sim_time;
+}
+
+void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km, double *t_blind, int *nsat_max)
+{
+    std::vector<int> event_types;
+    std::vector<double> event_dates;
     int s = nsat / npla;
     int status;
+    int satellite_id, nb_sat;
     double elev_mask;
     Satellite sat;
     event_type events;
@@ -25,8 +75,9 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
     const double t_sim = 5 * 86400;
     const double firstraan = 0.;
     const double argp = 0.0;
-    double raan, meanAnomaly;
+    double raan, meanAnomaly, t_start;
 
+    nb_sat = 0;
     for (int idxP = 0; idxP < npla; idxP++)
     {
         raan = firstraan * 180 / M_PI + idxP * 360.0 / npla;
@@ -42,7 +93,24 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
                 meanAnomaly * M_PI / 180,
                 raan * M_PI / 180);
 
-            status = sat._find_events(obs, 0, elev_mask, &events);
+            t_start = 0;
+            while (true)
+            {
+                sat.find_events(obs, t_start, elev_mask, &events);
+                t_start = events.t_culmination + events.tup_max;
+                if (events.t_culmination > t_sim)
+                    break;
+                if (events.t_rise > 0)
+                {
+                    nb_sat++;
+                    event_types.push_back(RISE_EVENT);
+                    event_dates.push_back(events.t_rise);
+                    event_types.push_back(SET_EVENT);
+                    event_dates.push_back(events.t_set);
+                }
+            }
         }
     }
+
+    analyse_timeline(nb_sat, event_types, event_dates, t_sim, t_blind, nsat_max);
 }

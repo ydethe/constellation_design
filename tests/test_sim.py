@@ -5,7 +5,7 @@ from constellation_design.compute import nb_sat_min
 
 
 def test_sgp4():
-    inc = 37.5 * pi / 180
+    inc = 80 * pi / 180
     nsat = 20
     npla = 20
     pha = 193

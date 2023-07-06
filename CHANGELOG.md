@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
+- Added llavpa_to_itrf ([6d0dfb2](ssh://git@git:7999/~blaudiy/constellation_design/commit/6d0dfb29a10778dc0f64a41bde47f85defb1944b) by Yann BLAUDIN DE THE).
 - Added simuate.cpp ([006a66d](ssh://git@git:7999/~blaudiy/constellation_design/commit/006a66d64b96f26b69c249b9ceb10017e4033226) by Yann de The).
 - Added CPPFLAGS ([b67e55e](ssh://git@git:7999/~blaudiy/constellation_design/commit/b67e55eade795b270937dd0734d74e4f327b3221) by Yann BLAUDIN DE THE).
 - Added compute_elevation_mask ([20bc614](ssh://git@git:7999/~blaudiy/constellation_design/commit/20bc614724c028ea028a9948fdeb5346d3b7df2e) by Yann BLAUDIN DE THE).

@@ -1,6 +1,8 @@
 #include <cmath>
 #include <iostream>
 #include <iomanip>
+#include <vector>
+#include <algorithm>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <unsupported/Eigen/Polynomials>
@@ -19,6 +21,7 @@ typedef struct
 {
     double ecc, M;
 } _anomaly_mean_to_ecc_data;
+
 
 double _anomaly_mean_to_ecc_fun(unsigned n, const double *x, double *grad, void *data)
 {
