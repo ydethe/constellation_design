@@ -25,4 +25,10 @@ AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal);
 
 double compute_elevation_mask(double px_dbm, double nf_db, double eta, double fcarrier_mhz, double cn0_lin_dbhz, double alpha, double t0_k, double alt_km);
 
+Matrix3d build_local_matrix(Vector3d pos);
+
+Vector3d geodetic_to_itrf(double lon,double lat,double h);
+
+VectorXd llavpa_to_itrf(double lon, double lat, double alt, double vel, double vs, double va);
+
 #endif

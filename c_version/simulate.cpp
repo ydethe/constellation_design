@@ -11,8 +11,9 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
     double elev_mask;
     Satellite sat;
     event_type events;
-    VectorXd obs(6), pv_sat(6);
-    obs << 4517590.87884893, 0., 4487348.40886592, 0., 0., 0.;
+    VectorXd obs(6);
+    obs = llavpa_to_itrf(0, lat, 0, 0, 0, 0);
+
     const double sma = Req + alt_km * 1e3;
     const double px_dbm = 36;
     const double nf_db = 3;

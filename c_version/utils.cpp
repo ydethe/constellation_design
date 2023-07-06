@@ -240,15 +240,108 @@ double compute_elevation_mask(double px_dbm, double nf_db, double eta, double fc
     solver.compute(coeff);
     const Eigen::PolynomialSolver<double, Eigen::Dynamic>::RootsType &r = solver.roots();
 
-    double re, im,re0;
-    re0=-1.;
+    double re, im, re0;
+    re0 = -1.;
     for (int i = 0; i < r.size(); i++)
     {
         re = std::real(r(i));
         im = std::imag(r(i));
         if (fabs(im) < 1e-6 && re > 0 && re < 1)
-            re0=re;
+            re0 = re;
     }
 
     return asin(re0);
+}
+
+Vector3d geodetic_to_itrf(double lon, double lat, double h)
+{
+    /*Compute the Geocentric (Cartesian) Coordinates X, Y, Z
+    given the Geodetic Coordinates lat, lon + Ellipsoid Height h
+
+    Args:
+        lon: Longitude (rad)
+        lat: Latitude (rad)
+        h: Altitude (m)
+
+    Returns:
+        A array of x, y, z coordinates (m)
+
+    Examples:
+        >>> x,y,z = geodetic_to_itrf(0,0,0)
+
+    */
+    Vector3d pos;
+    double N = Req / sqrt(1 - (1 - pow(1 - 1 / rf, 2)) * pow(sin(lat), 2));
+    double X = (N + h) * cos(lat) * cos(lon);
+    double Y = (N + h) * cos(lat) * sin(lon);
+    double Z = (pow(1 - 1 / rf, 2) * N + h) * sin(lat);
+
+    pos << X, Y, Z;
+
+    return pos;
+}
+
+Matrix3d build_local_matrix(Vector3d pos)
+{
+    /*Builds a ENV frame at a given position
+
+    Args:
+        pos: Position (m) of a point in ITRF
+
+    Returns:
+        Matrix whose columns are:
+
+        * Local East vector
+        * Local North vector
+        * Local Vertical vector, orthogonal to xvec
+
+    */
+    // Local ENV for the observer
+    Vector3d vert = pos;
+    Vector3d uz(0, 0, 1);
+    vert.normalize();
+
+    Vector3d east = uz.cross(pos);
+    east.normalize();
+
+    Vector3d north = vert.cross(east);
+
+    Matrix3d env;
+
+    env(seq(0, 2), 0) = east;
+    env(seq(0, 2), 1) = north;
+    env(seq(0, 2), 2) = vert;
+
+    return env;
+}
+
+VectorXd llavpa_to_itrf(double lon, double lat, double alt, double vel, double vs, double va)
+{
+    /*Converts a LLAVPA into ITRF
+    A LLAVPA is an array with
+    longitude, latitude, altitude (WGS84) and velocity, slope of velocity, azimut of velocity
+    Velocity is the speed of sat in ITRF frame
+
+    Args:
+        llavpa: lon,lat,alt,vel,vs,va
+
+    Returns:
+        An ITRF position and velocity
+
+    */
+    VectorXd pv(6);
+    pv(seq(0, 2)) = geodetic_to_itrf(lon, lat, alt);
+
+    // Local ENV for the satellite
+    Matrix3d M = build_local_matrix(pv(seq(0, 2)));
+
+    Vector3d local_v;
+    double ve = cos(vs) * sin(va) * vel;
+    double vn = cos(vs) * cos(va) * vel;
+    double vv = sin(vs) * vel;
+    local_v << ve, vn, vv;
+
+    pv(seq(3, 5)) = M * local_v;
+
+    return pv;
 }
