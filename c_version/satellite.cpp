@@ -72,7 +72,7 @@ VectorXd Satellite::getGeocentricITRFPositionAt(double td)
     return newpv;
 }
 
-AngleAxisd Satellite::getTEMEOrbitRotationMatrix(double t)
+AngleAxisd Satellite::getTEMEOrbitRotationMatrix(double t, bool derivative)
 {
     /*Compute the transition matrix R from ITRF to TEME, i.e.
     for X in ITRF, R @ X is the vector in TEME
@@ -89,9 +89,22 @@ AngleAxisd Satellite::getTEMEOrbitRotationMatrix(double t)
     Vector3d vel = pv_teme(seq(3, 5));
     double angle = m_sat_puls * t;
     Vector3d axe = pos.cross(vel);
-    axe.normalize();
+    AngleAxisd R;
+    Eigen::Matrix3d t_hat, t_t;
+    Eigen::Matrix3d id3 = Matrix3d::Identity(3, 3);
 
-    AngleAxisd R(angle, axe);
+    axe.normalize();
+    t_hat << 0, -axe(2), axe(1),
+        axe(2), 0, -axe(0),
+        -axe(1), axe(0), 0;
+    t_t << axe(0) * axe(0), axe(0) * axe(1), axe(0) * axe(2),
+        axe(1) * axe(0), axe(1) * axe(1), axe(1) * axe(2),
+        axe(2) * axe(0), axe(2) * axe(1), axe(2) * axe(2);
+
+    if (derivative)
+        R = m_sat_puls * (cos(angle) * t_hat - sin(angle) * id3 + sin(angle) * t_t);
+    else
+        R = AngleAxisd(angle, axe);
 
     return R;
 }
@@ -115,20 +128,32 @@ double _culm_func(unsigned n, const double *x, double *grad, void *my_func_data)
     double t = x[0];
     _find_event_data *d = (_find_event_data *)my_func_data;
     double t_epoch = t0_epoch + t;
-    AngleAxisd R1 = d->sat->getTEMEOrbitRotationMatrix(t);
-    AngleAxisd R2 = teme_transition_matrix(t_epoch, true);
+    AngleAxisd R1 = d->sat->getTEMEOrbitRotationMatrix(t, false);
+    AngleAxisd R2 = teme_transition_matrix(t_epoch, true, false);
+    AngleAxisd dR1 = d->sat->getTEMEOrbitRotationMatrix(t, true);
+    AngleAxisd dR2 = teme_transition_matrix(t_epoch, true, true);
 
     Vector3d M0 = *d->M0;
     Vector3d prx = *d->pos_rx;
 
     double v = prx.dot(R2 * R1 * M0);
-
     double J = d->s - v;
+    double dJ;
 
-    if (d->minimize)
-        return J;
-    else
-        return J * J;
+    dJ = -prx.dot(dR2 * R1 * M0 + R2 * dR1 * M0);
+
+    if (!d->minimize)
+    {
+        dJ = J * dJ;
+        J = J * J / 2;
+    }
+
+    if (grad)
+    {
+        grad[0] = dJ;
+    }
+
+    return J;
 }
 
 void Satellite::find_events(VectorXd obs, double t0, double elevation, event_type *events)
@@ -161,7 +186,7 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     double x[1];
     double minf;
     nlopt_opt opt;
-    opt = nlopt_create(NLOPT_LN_COBYLA, 1); /* algorithm and dimensionality */
+    opt = nlopt_create(NLOPT_LD_MMA, 1); /* algorithm and dimensionality */
     nlopt_set_min_objective(opt, _culm_func, &data);
     nlopt_set_xtol_rel(opt, 1e-4);
 
@@ -172,13 +197,16 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     lb[1] = t0 + 1.2 * Torb;
     x[0] = 0;
     data.minimize = true;
-    double test= _culm_func(1, x, NULL, &data);
+    double test = _culm_func(1, x, NULL, &data);
     x[0] = t0 + Torb / 2;
-    events->is_initially_visible=(test<0);
+    events->is_initially_visible = (test < 0);
     nlopt_set_lower_bounds(opt, lb);
     opt_status = nlopt_optimize(opt, x, &minf);
+    if (opt_status > 1)
+        std::cerr << "Optimizer quit with status " << opt_status << std::endl;
     if (opt_status < 0)
     {
+        nlopt_destroy(opt);
         std::cerr << nlopt_get_errmsg(opt) << std::endl;
         return;
     }
@@ -205,8 +233,11 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     x[0] = events->t_culmination - Tup_max / 2;
     nlopt_set_lower_bounds(opt, lb);
     opt_status = nlopt_optimize(opt, x, &minf);
+    if (opt_status > 1)
+        std::cerr << "Optimizer quit with status " << opt_status << std::endl;
     if (opt_status < 0)
     {
+        nlopt_destroy(opt);
         std::cerr << nlopt_get_errmsg(opt) << std::endl;
         return;
     }
@@ -222,8 +253,11 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     x[0] = events->t_culmination + Tup_max / 2;
     nlopt_set_lower_bounds(opt, lb);
     opt_status = nlopt_optimize(opt, x, &minf);
+    if (opt_status > 1)
+        std::cerr << "Optimizer quit with status " << opt_status << std::endl;
     if (opt_status < 0)
     {
+        nlopt_destroy(opt);
         std::cerr << nlopt_get_errmsg(opt) << std::endl;
         return;
     }
@@ -231,7 +265,6 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     events->t_set = x[0];
 
     nlopt_destroy(opt);
-
     return;
 }
 

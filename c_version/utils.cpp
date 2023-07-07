@@ -22,7 +22,6 @@ typedef struct
     double ecc, M;
 } _anomaly_mean_to_ecc_data;
 
-
 double _anomaly_mean_to_ecc_fun(unsigned n, const double *x, double *grad, void *data)
 {
     _anomaly_mean_to_ecc_data *d = (_anomaly_mean_to_ecc_data *)data;
@@ -190,11 +189,19 @@ VectorXd itrf_to_teme(double t_epoch, VectorXd pv_itrf)
     return pv;
 }
 
-AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal)
+AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal, bool derivative)
 {
     double jd, fraction;
     double theta, theta_dot;
     AngleAxisd R;
+    Eigen::Matrix3d id3 = Matrix3d::Identity(3, 3);
+    Eigen::Matrix3d t_hat,t_t;
+    t_hat << 0, -1, 0,
+        1, 0, 0,
+        0, 0, 0;
+    t_t << 0, 0, 0,
+        0, 0, 0,
+        0, 0, 1;
 
     time_to_jd_fraction(t_epoch, &jd, &fraction);
 
@@ -203,7 +210,13 @@ AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal)
     Vector3d uz(0.0, 0.0, 1.0);
 
     if (reciprocal)
-        R = AngleAxisd(-theta, uz);
+    {
+        theta *= -1;
+        // theta_dot *= -1;
+    }
+
+    if (derivative)
+        R = theta_dot * (cos(theta) * t_hat - sin(theta) * id3 + sin(theta)*t_t);
     else
         R = AngleAxisd(theta, uz);
 

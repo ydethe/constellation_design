@@ -44,7 +44,7 @@ public:
         double mano,
         double node);
     VectorXd getGeocentricITRFPositionAt(double td);
-    AngleAxisd getTEMEOrbitRotationMatrix(double t);
+    AngleAxisd getTEMEOrbitRotationMatrix(double t, bool derivative);
     double getOrbitalPeriod();
     void find_events(VectorXd obs, double t0, double elevation, event_type *events);
 
