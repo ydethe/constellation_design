@@ -22,7 +22,6 @@ typedef struct
     double ecc, M;
 } _anomaly_mean_to_ecc_data;
 
-
 double _anomaly_mean_to_ecc_fun(unsigned n, const double *x, double *grad, void *data)
 {
     _anomaly_mean_to_ecc_data *d = (_anomaly_mean_to_ecc_data *)data;
@@ -101,7 +100,7 @@ void theta_GMST1982(double jd_ut1, double fraction_ut1, double *theta, double *t
     double g = 67310.54841 + (8640184.812866 + (0.093104 + (-6.2e-6) * t) * t) * t;
     double dg = 8640184.812866 + (0.093104 * 2.0 + (-6.2e-6 * 3.0) * t) * t;
     *theta = fmod(fmod(jd_ut1, 1.0) + fraction_ut1 + fmod(g / DAY_S, 1.0), 1.) * M_PI * 2;
-    *theta_dot = (1.0 + dg / (DAY_S * 36525.0)) * M_PI * 2;
+    *theta_dot = (1.0 + dg / (DAY_S * 36525.0)) * M_PI * 2 / 86400.;
 }
 
 VectorXd orbital_to_teme(double sma, double ecc, double argp, double inc, double mano, double node)
@@ -190,22 +189,35 @@ VectorXd itrf_to_teme(double t_epoch, VectorXd pv_itrf)
     return pv;
 }
 
-AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal)
+AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal, bool derivative)
 {
     double jd, fraction;
     double theta, theta_dot;
     AngleAxisd R;
+    Matrix3d id3 = Matrix3d::Identity(3, 3);
+    Matrix3d t_hat;
+    Matrix3d t_t;
 
     time_to_jd_fraction(t_epoch, &jd, &fraction);
 
     theta_GMST1982(jd, fraction, &theta, &theta_dot);
 
     Vector3d uz(0.0, 0.0, 1.0);
+    t_hat << 0, -uz(2), uz(1),
+        uz(2), 0, -uz(0),
+        -uz(1), uz(0), 0;
+    t_t << uz(0) * uz(0), uz(1) * uz(0), uz(2) * uz(0),
+        uz(0) * uz(1), uz(1) * uz(1), uz(2) * uz(1),
+        uz(0) * uz(2), uz(1) * uz(2), uz(2) * uz(2);
 
     if (reciprocal)
-        R = AngleAxisd(-theta, uz);
+        theta *= -1;
+
+    if (derivative)
+        R = theta_dot * (-sin(theta) * id3 + cos(theta) * t_hat + sin(theta) * t_t);
     else
-        R = AngleAxisd(theta, uz);
+        // R = AngleAxisd(theta, uz);
+        R = cos(theta)*id3 + sin(theta)*t_hat + (1-cos(theta))*t_t;
 
     return R;
 }

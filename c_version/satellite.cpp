@@ -72,7 +72,7 @@ VectorXd Satellite::getGeocentricITRFPositionAt(double td)
     return newpv;
 }
 
-AngleAxisd Satellite::getTEMEOrbitRotationMatrix(double t)
+AngleAxisd Satellite::getTEMEOrbitRotationMatrix(double t, bool derivative)
 {
     /*Compute the transition matrix R from ITRF to TEME, i.e.
     for X in ITRF, R @ X is the vector in TEME
@@ -88,10 +88,24 @@ AngleAxisd Satellite::getTEMEOrbitRotationMatrix(double t)
     Vector3d pos = pv_teme(seq(0, 2));
     Vector3d vel = pv_teme(seq(3, 5));
     double angle = m_sat_puls * t;
+    AngleAxisd R;
+    Matrix3d id3 = Matrix3d::Identity(3, 3);
+    Matrix3d t_hat;
+    Matrix3d t_t;
+
     Vector3d axe = pos.cross(vel);
     axe.normalize();
+    t_hat << 0, -axe(2), axe(1),
+        axe(2), 0, -axe(0),
+        -axe(1), axe(0), 0;
+    t_t << axe(0) * axe(0), axe(1) * axe(0), axe(2) * axe(0),
+        axe(0) * axe(1), axe(1) * axe(1), axe(2) * axe(1),
+        axe(0) * axe(2), axe(1) * axe(2), axe(2) * axe(2);
 
-    AngleAxisd R(angle, axe);
+    if (derivative)
+        R = m_sat_puls * (-sin(angle) * id3 + cos(angle) * t_hat + sin(angle) * t_t);
+    else
+        R = AngleAxisd(angle, axe);
 
     return R;
 }
@@ -115,8 +129,10 @@ double _culm_func(unsigned n, const double *x, double *grad, void *my_func_data)
     double t = x[0];
     _find_event_data *d = (_find_event_data *)my_func_data;
     double t_epoch = t0_epoch + t;
-    AngleAxisd R1 = d->sat->getTEMEOrbitRotationMatrix(t);
-    AngleAxisd R2 = teme_transition_matrix(t_epoch, true);
+    AngleAxisd R1 = d->sat->getTEMEOrbitRotationMatrix(t, false);
+    AngleAxisd R2 = teme_transition_matrix(t_epoch, true, false);
+    AngleAxisd dR1 = d->sat->getTEMEOrbitRotationMatrix(t, true);
+    AngleAxisd dR2 = teme_transition_matrix(t_epoch, true, true);
 
     Vector3d M0 = *d->M0;
     Vector3d prx = *d->pos_rx;
@@ -172,9 +188,9 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     lb[1] = t0 + 1.2 * Torb;
     x[0] = 0;
     data.minimize = true;
-    double test= _culm_func(1, x, NULL, &data);
+    double test = _culm_func(1, x, NULL, &data);
     x[0] = t0 + Torb / 2;
-    events->is_initially_visible=(test<0);
+    events->is_initially_visible = (test < 0);
     nlopt_set_lower_bounds(opt, lb);
     opt_status = nlopt_optimize(opt, x, &minf);
     if (opt_status < 0)

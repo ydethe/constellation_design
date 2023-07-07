@@ -7,9 +7,11 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
+using Eigen::AngleAxisd;
+using Eigen::Matrix3d;
 using Eigen::MatrixXd;
+using Eigen::Vector3d;
 using Eigen::VectorXd;
-
 
 /**
  * Argsort(currently support ascending sort)
@@ -17,12 +19,14 @@ using Eigen::VectorXd;
  * @param array input array
  * @return indices w.r.t sorted array
  */
-template<typename T>
-std::vector<size_t> argsort(const std::vector<T> &array) {
+template <typename T>
+std::vector<size_t> argsort(const std::vector<T> &array)
+{
     std::vector<size_t> indices(array.size());
     std::iota(indices.begin(), indices.end(), 0);
     std::sort(indices.begin(), indices.end(),
-              [&array](int left, int right) -> bool {
+              [&array](int left, int right) -> bool
+              {
                   // sort indices according to corresponding array element
                   return array[left] < array[right];
               });
@@ -38,19 +42,21 @@ double anomaly_mean_to_true(double ecc, double M);
 
 double anomaly_true_to_ecc(double ecc, double v);
 
+void theta_GMST1982(double jd_ut1, double fraction_ut1, double *theta, double *theta_dot);
+
 VectorXd orbital_to_teme(double sma, double ecc, double argp, double inc, double mano, double node);
 
 VectorXd teme_to_itrf(double t_epoch, VectorXd pv_teme);
 
 VectorXd itrf_to_teme(double t_epoch, VectorXd pv_itrf);
 
-AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal);
+AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal, bool derivative);
 
 double compute_elevation_mask(double px_dbm, double nf_db, double eta, double fcarrier_mhz, double cn0_lin_dbhz, double alpha, double t0_k, double alt_km);
 
 Matrix3d build_local_matrix(Vector3d pos);
 
-Vector3d geodetic_to_itrf(double lon,double lat,double h);
+Vector3d geodetic_to_itrf(double lon, double lat, double h);
 
 VectorXd llavpa_to_itrf(double lon, double lat, double alt, double vel, double vs, double va);
 

@@ -11,9 +11,8 @@ using Eigen::seq;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-
-
-typedef struct {
+typedef struct
+{
     double t_rise;
     double t_culmination;
     double t_set;
@@ -44,10 +43,9 @@ public:
         double mano,
         double node);
     VectorXd getGeocentricITRFPositionAt(double td);
-    AngleAxisd getTEMEOrbitRotationMatrix(double t);
+    AngleAxisd getTEMEOrbitRotationMatrix(double t, bool derivative);
     double getOrbitalPeriod();
     void find_events(VectorXd obs, double t0, double elevation, event_type *events);
-
 };
 
 #endif

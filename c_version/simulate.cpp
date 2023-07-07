@@ -46,7 +46,6 @@ void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, 
 
         if (*nsat_max < nsat)
             *nsat_max = nsat;
-
     }
 
     if (*nsat_max == 0)
@@ -63,7 +62,7 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
     double elev_mask;
     Satellite sat;
     event_type events;
-    VectorXd obs(6),pv_sat(6);
+    VectorXd obs(6), pv_sat(6);
     obs = llavpa_to_itrf(0, lat, 0, 0, 0, 0);
 
     const double sma = Req + alt_km * 1e3;
@@ -95,7 +94,7 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
                 argp,
                 meanAnomaly * M_PI / 180,
                 raan * M_PI / 180);
-            
+
             t_start = 0;
             while (true)
             {
