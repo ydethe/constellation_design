@@ -7,6 +7,7 @@
 void test_theta_GMST1982();
 void test_teme_orbit_mat();
 void test_teme_mat();
+void test_func();
 
 int main(int argc, char **argv)
 {
@@ -19,8 +20,10 @@ int main(int argc, char **argv)
     double t_blind;
     int nsat_max;
 
-    test_theta_GMST1982();
-    test_teme_mat();
+    // test_theta_GMST1982();
+    // test_teme_orbit_mat();
+    // test_teme_mat();
+    test_func();
     // simulate(lat, inc, nsat, npla, pha, alt_km, &t_blind, &nsat_max);
 
     // std::cout << t_blind << "," << nsat_max << std::endl;

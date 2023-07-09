@@ -4,7 +4,6 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
-using Eigen::AngleAxisd;
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::seq;
@@ -43,7 +42,7 @@ public:
         double mano,
         double node);
     VectorXd getGeocentricITRFPositionAt(double td);
-    AngleAxisd getTEMEOrbitRotationMatrix(double t, bool derivative);
+    Matrix3d getTEMEOrbitRotationMatrix(double t, bool derivative);
     double getOrbitalPeriod();
     void find_events(VectorXd obs, double t0, double elevation, event_type *events);
 };

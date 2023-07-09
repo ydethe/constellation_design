@@ -72,7 +72,7 @@ VectorXd Satellite::getGeocentricITRFPositionAt(double td)
     return newpv;
 }
 
-AngleAxisd Satellite::getTEMEOrbitRotationMatrix(double t, bool derivative)
+Matrix3d Satellite::getTEMEOrbitRotationMatrix(double t, bool derivative)
 {
     /*Compute the transition matrix R from ITRF to TEME, i.e.
     for X in ITRF, R @ X is the vector in TEME
@@ -88,7 +88,7 @@ AngleAxisd Satellite::getTEMEOrbitRotationMatrix(double t, bool derivative)
     Vector3d pos = pv_teme(seq(0, 2));
     Vector3d vel = pv_teme(seq(3, 5));
     double angle = m_sat_puls * t;
-    AngleAxisd R;
+    Matrix3d R;
     Matrix3d id3 = Matrix3d::Identity(3, 3);
     Matrix3d t_hat;
     Matrix3d t_t;
@@ -105,7 +105,7 @@ AngleAxisd Satellite::getTEMEOrbitRotationMatrix(double t, bool derivative)
     if (derivative)
         R = m_sat_puls * (-sin(angle) * id3 + cos(angle) * t_hat + sin(angle) * t_t);
     else
-        R = AngleAxisd(angle, axe);
+        R = AngleAxisd(angle, axe).toRotationMatrix();
 
     return R;
 }
@@ -129,22 +129,28 @@ double _culm_func(unsigned n, const double *x, double *grad, void *my_func_data)
     double t = x[0];
     _find_event_data *d = (_find_event_data *)my_func_data;
     double t_epoch = t0_epoch + t;
-    AngleAxisd R1 = d->sat->getTEMEOrbitRotationMatrix(t, false);
-    AngleAxisd R2 = teme_transition_matrix(t_epoch, true, false);
-    AngleAxisd dR1 = d->sat->getTEMEOrbitRotationMatrix(t, true);
-    AngleAxisd dR2 = teme_transition_matrix(t_epoch, true, true);
+    Matrix3d R1 = d->sat->getTEMEOrbitRotationMatrix(t, false);
+    Matrix3d R2 = teme_transition_matrix(t_epoch, true, false);
+    Matrix3d dR1 = d->sat->getTEMEOrbitRotationMatrix(t, true);
+    Matrix3d dR2 = teme_transition_matrix(t_epoch, true, true);
 
     Vector3d M0 = *d->M0;
     Vector3d prx = *d->pos_rx;
 
     double v = prx.dot(R2 * R1 * M0);
-
     double J = d->s - v;
+    double dJ = -prx.dot(dR2 * R1 * M0 + R2 * dR1 * M0);
+
+    if (!d->minimize)
+        dJ *= J;
+
+    if (grad)
+        grad[0] = dJ;
 
     if (d->minimize)
         return J;
     else
-        return J * J;
+        return J * J / 2;
 }
 
 void Satellite::find_events(VectorXd obs, double t0, double elevation, event_type *events)
@@ -169,6 +175,9 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     const double Tup_max = Torb * alpha / M_PI;
     const double s = cos(alpha);
     _find_event_data data = {s, this, &M0, &M1, true};
+    std::cout << s << std::endl;
+    std::cout << M0 << std::endl;
+    std::cout << M1 << std::endl;
 
     // ===========================================================
     // Setting up the optimizer

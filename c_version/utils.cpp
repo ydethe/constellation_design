@@ -189,11 +189,11 @@ VectorXd itrf_to_teme(double t_epoch, VectorXd pv_itrf)
     return pv;
 }
 
-AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal, bool derivative)
+Matrix3d teme_transition_matrix(double t_epoch, bool reciprocal, bool derivative)
 {
     double jd, fraction;
     double theta, theta_dot;
-    AngleAxisd R;
+    Matrix3d R;
     Matrix3d id3 = Matrix3d::Identity(3, 3);
     Matrix3d t_hat;
     Matrix3d t_t;
@@ -210,14 +210,16 @@ AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal, bool derivati
         uz(0) * uz(1), uz(1) * uz(1), uz(2) * uz(1),
         uz(0) * uz(2), uz(1) * uz(2), uz(2) * uz(2);
 
-    if (reciprocal)
+    if (reciprocal) {
         theta *= -1;
+        theta_dot *= -1;
+    }
 
     if (derivative)
-        R = theta_dot * (-sin(theta) * id3 + cos(theta) * t_hat + sin(theta) * t_t);
+        R = id3 * (-sin(theta) * theta_dot) + t_hat * cos(theta) * theta_dot + t_t * sin(theta) * theta_dot;
     else
-        // R = AngleAxisd(theta, uz);
-        R = cos(theta)*id3 + sin(theta)*t_hat + (1-cos(theta))*t_t;
+        R = AngleAxisd(theta, uz).toRotationMatrix();
+        // R = cos(theta) * id3 + sin(theta) * t_hat + (1 - cos(theta)) * t_t;
 
     return R;
 }

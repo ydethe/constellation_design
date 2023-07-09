@@ -7,7 +7,6 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
-using Eigen::AngleAxisd;
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -50,7 +49,7 @@ VectorXd teme_to_itrf(double t_epoch, VectorXd pv_teme);
 
 VectorXd itrf_to_teme(double t_epoch, VectorXd pv_itrf);
 
-AngleAxisd teme_transition_matrix(double t_epoch, bool reciprocal, bool derivative);
+Matrix3d teme_transition_matrix(double t_epoch, bool reciprocal, bool derivative);
 
 double compute_elevation_mask(double px_dbm, double nf_db, double eta, double fcarrier_mhz, double cn0_lin_dbhz, double alpha, double t0_k, double alt_km);
 
