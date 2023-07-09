@@ -174,8 +174,6 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
         nlopt_destroy(opt);
         return;
     }
-    _culm_func(1,x,grad,&data);
-    std::cout << "grad: " << grad[0] << std::endl;
 
     const double alpha_max = acos(threshold - minf);
     const double d_max = sqrt(Req * Req + r * r - 2 * Req * r * cos(alpha_max));
@@ -187,13 +185,14 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     events->t_rise = -1;
     events->t_set = -1;
 
+    nlopt_destroy(opt);
+
     if (elev_max < elevation) {
-        nlopt_destroy(opt);
         return;
     }
 
     // ===========================================================
-    // Searching rise time
+    // Set up root finding algorithm
     // ===========================================================
     gsl_function_fdf FDF;
     FDF.f = &quadratic;
@@ -203,6 +202,10 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
 
     const gsl_root_fdfsolver_type * T = gsl_root_fdfsolver_newton;
     gsl_root_fdfsolver *s = gsl_root_fdfsolver_alloc (T);
+
+    // ===========================================================
+    // Searching rise time
+    // ===========================================================
     x0=events->t_culmination - Tup_max / 2;
     gsl_root_fdfsolver_set(s, &FDF, x0);
 
@@ -213,29 +216,34 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
         status = gsl_root_fdfsolver_iterate(s);
         x0 = gsl_root_fdfsolver_root(s);
     } while (status == GSL_CONTINUE && iter < max_iter);
-
+    if (status != GSL_SUCCESS) {
+        std::cerr << "Root finding error:" << status << std::endl;
+        gsl_root_fdfsolver_free(s);
+        return;
+    }
     events->t_rise = x0;
 
     // ===========================================================
     // Searching set time
     // ===========================================================
-    lb[0] = events->t_culmination;
-    lb[1] = events->t_culmination + Tup_max;
-    x[0] = events->t_culmination + Tup_max / 2;
-    nlopt_set_lower_bounds(opt, lb);
-    opt_status = nlopt_optimize(opt, x, &minf);
-    if (opt_status < 0)
+    x0=events->t_culmination + Tup_max / 2;
+    gsl_root_fdfsolver_set(s, &FDF, x0);
+
+    iter=0;
+    do
     {
-        std::cerr << nlopt_get_errmsg(opt) << std::endl;
-        nlopt_destroy(opt);
+        iter++;
+        status = gsl_root_fdfsolver_iterate(s);
+        x0 = gsl_root_fdfsolver_root(s);
+    } while (status == GSL_CONTINUE && iter < max_iter);
+    if (status != GSL_SUCCESS) {
+        std::cerr << "Root finding error:" << status << std::endl;
+        gsl_root_fdfsolver_free(s);
         return;
     }
-    _culm_func(1,x,grad,&data);
-    std::cout << "grad: " << grad[0] << std::endl;
-
     events->t_set = x[0];
 
-    nlopt_destroy(opt);
+    gsl_root_fdfsolver_free(s);
     return;
 }
 
