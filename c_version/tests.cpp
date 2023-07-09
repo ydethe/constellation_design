@@ -81,14 +81,36 @@ void test_func()
     const double dt = 0.1;
     double x[1], grad[1];
     double Jm, J0, Jp;
+    double max_err, err;
     Vector3d M0(-0.375765, 0.0975621, 0.921565);
     Vector3d M1(0.174783, 0, 0.984607);
     Satellite sat(7e6, 3 * M_PI / 8, 0.5, 1.0, 1.5);
-    double max_err, err;
 
     _find_event_data data = {s, &sat, &M0, &M1, true};
 
     max_err = 0;
+    data.minimize = true;
+    for (double t = 0; t < 1000; t += 100)
+    {
+        x[0] = 1000 - dt;
+        Jm = _culm_func(1, x, NULL, &data);
+
+        x[0] = 1000;
+        J0 = _culm_func(1, x, grad, &data);
+
+        x[0] = 1000 + dt;
+        Jp = _culm_func(1, x, NULL, &data);
+
+        err = (Jp - Jm) / (2 * dt) - grad[0];
+
+        if (err > max_err)
+            max_err = err;
+    }
+
+    std::cout << max_err << std::endl;
+
+    max_err = 0;
+    data.minimize = false;
     for (double t = 0; t < 1000; t += 100)
     {
         x[0] = 1000 - dt;

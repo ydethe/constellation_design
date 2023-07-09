@@ -37,12 +37,16 @@ void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, 
             nsat -= 1;
             if (nsat == 0)
                 last_blind_date = event_dates[sorted_index];
-            else if (nsat < 0)
+            else if (nsat < 0) {
+                std::cerr << "nsat:" << nsat << std::endl;
                 throw;
+            }
             std::cout << event_dates[sorted_index] << " set, nsat=" << nsat << ", t_blind=" << *t_blind << std::endl;
         }
-        else
+        else {
+            std::cerr << "unknown event:" << event_types[sorted_index]  << std::endl;
             throw;
+        }
 
         if (*nsat_max < nsat)
             *nsat_max = nsat;
@@ -100,6 +104,7 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
             {
                 sat.find_events(obs, t_start, elev_mask, &events);
                 t_start = events.t_culmination + events.tup_max;
+                std::cout << events.t_culmination << ", " << events.t_rise << ", " << events.is_initially_visible << std::endl;
                 if (events.is_initially_visible)
                     nb_sat++;
                 if (events.t_culmination > t_sim)
@@ -115,5 +120,6 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
         }
     }
 
+    std::cout << event_dates.size() << std::endl;
     analyse_timeline(nb_sat, event_types, event_dates, t_sim, t_blind, nsat_max);
 }

@@ -10,7 +10,7 @@ default: test.exe
 
 test.exe: $(OBJ)
 	@echo Linking $@
-	$(Q)g++ -o $@ $^ -lm -lnlopt
+	$(Q)g++ -o $@ $^ -lm -lnlopt -lgsl
 
 %.o: %.cpp
 	@echo Compiling $@

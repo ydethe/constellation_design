@@ -1,10 +1,14 @@
 #include <nlopt.h>
 #include <iostream>
 #include <iomanip>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_roots.h>
 
 #include "satellite.hpp"
 #include "constants.hpp"
 #include "utils.hpp"
+#include "optim_fn.h"
 
 using Eigen::AngleAxisd;
 using Eigen::Matrix3d;
@@ -115,44 +119,6 @@ double Satellite::getOrbitalPeriod()
     return 2 * M_PI / m_sat_puls;
 }
 
-typedef struct
-{
-    double s;
-    Satellite *sat;
-    Vector3d *M0;
-    Vector3d *pos_rx;
-    bool minimize;
-} _find_event_data;
-
-double _culm_func(unsigned n, const double *x, double *grad, void *my_func_data)
-{
-    double t = x[0];
-    _find_event_data *d = (_find_event_data *)my_func_data;
-    double t_epoch = t0_epoch + t;
-    Matrix3d R1 = d->sat->getTEMEOrbitRotationMatrix(t, false);
-    Matrix3d R2 = teme_transition_matrix(t_epoch, true, false);
-    Matrix3d dR1 = d->sat->getTEMEOrbitRotationMatrix(t, true);
-    Matrix3d dR2 = teme_transition_matrix(t_epoch, true, true);
-
-    Vector3d M0 = *d->M0;
-    Vector3d prx = *d->pos_rx;
-
-    double v = prx.dot(R2 * R1 * M0);
-    double J = d->s - v;
-    double dJ = -prx.dot(dR2 * R1 * M0 + R2 * dR1 * M0);
-
-    if (!d->minimize)
-        dJ *= J;
-
-    if (grad)
-        grad[0] = dJ;
-
-    if (d->minimize)
-        return J;
-    else
-        return J * J / 2;
-}
-
 void Satellite::find_events(VectorXd obs, double t0, double elevation, event_type *events)
 {
     // ===========================================================
@@ -161,7 +127,7 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     const double Torb = this->getOrbitalPeriod();
     VectorXd pv0 = this->getGeocentricITRFPositionAt(0);
     const double r = pv0(seq(0, 2)).norm();
-    int opt_status;
+    int opt_status,status;
 
     VectorXd pv_teme = itrf_to_teme(t0_epoch, pv0);
     Vector3d M0 = pv_teme(seq(0, 2));
@@ -173,20 +139,21 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     const double beta = acos((d * d + r * r - Req * Req) / (2 * r * d));
     const double alpha = M_PI / 2 - (elevation + beta);
     const double Tup_max = Torb * alpha / M_PI;
-    const double s = cos(alpha);
-    _find_event_data data = {s, this, &M0, &M1, true};
-    std::cout << s << std::endl;
-    std::cout << M0 << std::endl;
-    std::cout << M1 << std::endl;
+    const double threshold = cos(alpha);
+    _find_event_data data = {threshold, this, &M0, &M1};
 
     // ===========================================================
     // Setting up the optimizer
     // ===========================================================
     double lb[2];
-    double x[1];
+    double x0,x[1],grad[1];
     double minf;
+    int iter;
+    const int max_iter = 100;
     nlopt_opt opt;
-    opt = nlopt_create(NLOPT_LN_COBYLA, 1); /* algorithm and dimensionality */
+    // opt = nlopt_create(NLOPT_LD_MMA, 1); /* algorithm and dimensionality */
+    opt = nlopt_create(NLOPT_LN_COBYLA, 1);
+    // opt = nlopt_create(NLOPT_LD_SLSQP, 1);
     nlopt_set_min_objective(opt, _culm_func, &data);
     nlopt_set_xtol_rel(opt, 1e-4);
 
@@ -196,7 +163,6 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     lb[0] = t0;
     lb[1] = t0 + 1.2 * Torb;
     x[0] = 0;
-    data.minimize = true;
     double test = _culm_func(1, x, NULL, &data);
     x[0] = t0 + Torb / 2;
     events->is_initially_visible = (test < 0);
@@ -205,10 +171,13 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     if (opt_status < 0)
     {
         std::cerr << nlopt_get_errmsg(opt) << std::endl;
+        nlopt_destroy(opt);
         return;
     }
+    _culm_func(1,x,grad,&data);
+    std::cout << "grad: " << grad[0] << std::endl;
 
-    const double alpha_max = acos(s - minf);
+    const double alpha_max = acos(threshold - minf);
     const double d_max = sqrt(Req * Req + r * r - 2 * Req * r * cos(alpha_max));
     const double elev_max = -asin((d_max * d_max + Req * Req - r * r) / (2 * Req * d_max));
 
@@ -218,30 +187,38 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     events->t_rise = -1;
     events->t_set = -1;
 
-    if (elev_max < elevation)
+    if (elev_max < elevation) {
+        nlopt_destroy(opt);
         return;
+    }
 
     // ===========================================================
     // Searching rise time
     // ===========================================================
-    data.minimize = false;
-    lb[0] = events->t_culmination - Tup_max;
-    lb[1] = events->t_culmination;
-    x[0] = events->t_culmination - Tup_max / 2;
-    nlopt_set_lower_bounds(opt, lb);
-    opt_status = nlopt_optimize(opt, x, &minf);
-    if (opt_status < 0)
-    {
-        std::cerr << nlopt_get_errmsg(opt) << std::endl;
-        return;
-    }
+    gsl_function_fdf FDF;
+    FDF.f = &quadratic;
+    FDF.df = &quadratic_deriv;
+    FDF.fdf = &quadratic_fdf;
+    FDF.params = &data;
 
-    events->t_rise = x[0];
+    const gsl_root_fdfsolver_type * T = gsl_root_fdfsolver_newton;
+    gsl_root_fdfsolver *s = gsl_root_fdfsolver_alloc (T);
+    x0=events->t_culmination - Tup_max / 2;
+    gsl_root_fdfsolver_set(s, &FDF, x0);
+
+    iter=0;
+    do
+    {
+        iter++;
+        status = gsl_root_fdfsolver_iterate(s);
+        x0 = gsl_root_fdfsolver_root(s);
+    } while (status == GSL_CONTINUE && iter < max_iter);
+
+    events->t_rise = x0;
 
     // ===========================================================
     // Searching set time
     // ===========================================================
-    data.minimize = false;
     lb[0] = events->t_culmination;
     lb[1] = events->t_culmination + Tup_max;
     x[0] = events->t_culmination + Tup_max / 2;
@@ -250,13 +227,15 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     if (opt_status < 0)
     {
         std::cerr << nlopt_get_errmsg(opt) << std::endl;
+        nlopt_destroy(opt);
         return;
     }
+    _culm_func(1,x,grad,&data);
+    std::cout << "grad: " << grad[0] << std::endl;
 
     events->t_set = x[0];
 
     nlopt_destroy(opt);
-
     return;
 }
 

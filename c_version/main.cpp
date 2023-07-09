@@ -23,8 +23,8 @@ int main(int argc, char **argv)
     // test_theta_GMST1982();
     // test_teme_orbit_mat();
     // test_teme_mat();
-    test_func();
-    // simulate(lat, inc, nsat, npla, pha, alt_km, &t_blind, &nsat_max);
+    // test_func();
+    simulate(lat, inc, nsat, npla, pha, alt_km, &t_blind, &nsat_max);
+    std::cout << t_blind << "," << nsat_max << std::endl;
 
-    // std::cout << t_blind << "," << nsat_max << std::endl;
 }
