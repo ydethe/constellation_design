@@ -98,9 +98,6 @@ Matrix3d Satellite::getTEMEOrbitRotationMatrix(double t, bool derivative)
     Matrix3d t_t;
 
     Vector3d axe = pos.cross(vel);
-    AngleAxisd R;
-    Eigen::Matrix3d t_hat, t_t;
-    Eigen::Matrix3d id3 = Matrix3d::Identity(3, 3);
 
     axe.normalize();
     t_hat << 0, -axe(2), axe(1),
@@ -173,8 +170,8 @@ void Satellite::find_events(VectorXd obs, double t0, double elevation, event_typ
     events->is_initially_visible = (test < 0);
     nlopt_set_lower_bounds(opt, lb);
     opt_status = nlopt_optimize(opt, x, &minf);
-    if (opt_status > 1)
-        std::cerr << "Optimizer quit with status " << opt_status << std::endl;
+    // if (opt_status > 1)
+    //     std::cerr << "Optimizer quit with status " << opt_status << std::endl;
     if (opt_status < 0)
     {
         nlopt_destroy(opt);

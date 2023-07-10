@@ -52,7 +52,7 @@ double _culm_func(unsigned n, const double *x, double *grad, void *params)
 
     if (grad)
         grad[0]=dJ;
-        
+
     return J;
 
 }

@@ -10,10 +10,8 @@ def test_sgp4():
     npla = 1
     pha = 193
     alt = 607.4
-    t_blind, nsat_max, tps_max, elev_mask = simulate(80 * pi / 180, inc, nsat, npla, pha, alt)
+    t_blind = simulate(80 * pi / 180, inc, nsat, npla, pha, alt)
     print(f"t_blind: {t_blind:.1f} s")
-    print(f"nsat_max: {nsat_max}")
-    print(f"elev_mask: {elev_mask*180/pi:.2f} deg")
 
 
 def test_optim():
@@ -21,5 +19,5 @@ def test_optim():
 
 
 if __name__ == "__main__":
-    test_sgp4()
-    # test_optim()
+    # test_sgp4()
+    test_optim()

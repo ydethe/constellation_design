@@ -51,7 +51,7 @@ def analyse_timeline(init, events, total_sim_time):
                 raise AssertionError
         if nsat_max < nsat:
             nsat_max = nsat
-        print(e,nsat,t_blind)
+        print(e, nsat, t_blind)
 
     if nsat_max == 0:
         t_blind = total_sim_time

@@ -1,5 +1,6 @@
 #include <math.h>
 #include <iostream>
+#include <pybind11/pybind11.h>
 
 #include "constants.hpp"
 #include "satellite.hpp"
@@ -30,7 +31,6 @@ void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, 
             if (nsat == 0)
                 *t_blind += event_dates[sorted_index] - last_blind_date;
             nsat += 1;
-            std::cout << event_dates[sorted_index] << " rise, nsat=" << nsat << ", t_blind=" << *t_blind << std::endl;
         }
         else if (event_types[sorted_index] == SET_EVENT)
         {
@@ -41,7 +41,6 @@ void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, 
                 std::cerr << "nsat:" << nsat << std::endl;
                 throw;
             }
-            std::cout << event_dates[sorted_index] << " set, nsat=" << nsat << ", t_blind=" << *t_blind << std::endl;
         }
         else {
             std::cerr << "unknown event:" << event_types[sorted_index]  << std::endl;
@@ -56,8 +55,10 @@ void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, 
         *t_blind = total_sim_time;
 }
 
-void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km, double *t_blind, int *nsat_max)
+double simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km)
 {
+    double t_blind;
+    int nsat_max;
     std::vector<int> event_types;
     std::vector<double> event_dates;
     int s = nsat / npla;
@@ -104,7 +105,6 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
             {
                 sat.find_events(obs, t_start, elev_mask, &events);
                 t_start = events.t_culmination + events.tup_max;
-                std::cout << events.t_culmination << ", " << events.t_rise << ", " << events.is_initially_visible << std::endl;
                 if (events.is_initially_visible)
                     nb_sat++;
                 if (events.t_culmination > t_sim)
@@ -120,6 +120,14 @@ void simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km
         }
     }
 
-    std::cout << event_dates.size() << std::endl;
-    analyse_timeline(nb_sat, event_types, event_dates, t_sim, t_blind, nsat_max);
+    analyse_timeline(nb_sat, event_types, event_dates, t_sim, &t_blind, &nsat_max);
+
+    return t_blind;
+
+}
+
+PYBIND11_MODULE(simulate, m) {
+    m.doc() = "pybind11 example plugin"; // optional module docstring
+
+    m.def("simulate", &simulate, "The simulation function");
 }

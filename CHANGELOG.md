@@ -6,12 +6,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
-## [0.1.0](0.1.0) - 2023-07-07
+## [0.1.0](0.1.0) - 2023-07-10
 
 <small>[Compare with first commit]()</small>
 
 ### Added
 
+- Added tests ([ee8727a](ssh://git@git:7999/~blaudiy/constellation_design/commit/ee8727a351329a470245ba1d36e2073d4cddc972) by YANN BLAUDIN DE THE).
+- Added cleanup and error handling ([3088ec6](ssh://git@git:7999/~blaudiy/constellation_design/commit/3088ec6e642f3db88400e23265481d5075445996) by Yann de Thé).
+- Added derivatives ([8cc8c30](ssh://git@git:7999/~blaudiy/constellation_design/commit/8cc8c301a54abc6c7323fd6e8ec1317e86da1cb0) by Yann BLAUDIN DE THE).
 - Added llavpa_to_itrf ([6d0dfb2](ssh://git@git:7999/~blaudiy/constellation_design/commit/6d0dfb29a10778dc0f64a41bde47f85defb1944b) by Yann BLAUDIN DE THE).
 - Added simuate.cpp ([006a66d](ssh://git@git:7999/~blaudiy/constellation_design/commit/006a66d64b96f26b69c249b9ceb10017e4033226) by Yann de The).
 - Added CPPFLAGS ([b67e55e](ssh://git@git:7999/~blaudiy/constellation_design/commit/b67e55eade795b270937dd0734d74e4f327b3221) by Yann BLAUDIN DE THE).

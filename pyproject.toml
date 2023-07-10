@@ -1,6 +1,10 @@
 [build-system]
 requires = [
     "pdm-backend>=2.1.0,<3.0.0",
+    "setuptools>=67.0.0,<69.0.0",
+    "pybind11>=2.10.4,<3.0.0",
+    "wheel",
+    "toml"
 
 ]
 build-backend = "pdm.backend"
@@ -77,7 +81,8 @@ testpaths = [
 source = "scm"
 
 [tool.pdm.build]
-
+run-setuptools = true
+editable-backend = "editables"
 includes = [
     "constellation_design/",
 ]
@@ -95,7 +100,6 @@ source-includes = [
     "**/*.cpp",
     "**/*.py"
 ]
-editable-backend = "editables"
 
 [tool.pdm.dev-dependencies]
 dev = [
