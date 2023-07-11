@@ -78,8 +78,7 @@ double simulate(double lat, double inc, int nsat, int npla, int pha, double alt_
     const double cn0_lim_dbhz = 46.46595211;
     const double alpha = 0.0305;
     const double t0_k = 290;
-    // const double t_sim = 5 * 86400;
-    const double t_sim = 20000;
+    const double t_sim = 5 * 86400;
     const double firstraan = 0.;
     const double argp = 0.0;
     double raan, meanAnomaly, t_start;
