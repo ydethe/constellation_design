@@ -21,9 +21,8 @@ def fun(X, nsat, npla, pha):
 
 
 def test_sgp4():
-    # X = {'nsatp': 5, 'inc': 1.4468254430943874, 'npla': 4, 'pha': 288, 'alt': 894.8756129235549}
-    inc = 1.4468254430943874
-    nsat = 5
+    inc = 80 * pi / 180
+    nsat = 4
     npla = 4
     pha = 288
     alt = 894.8756129235549
@@ -62,5 +61,5 @@ def test_optim():
 
 
 if __name__ == "__main__":
-    # test_sgp4()
-    test_optim()
+    test_sgp4()
+    # test_optim()

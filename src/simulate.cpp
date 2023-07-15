@@ -9,27 +9,33 @@
 #define RISE_EVENT 0
 #define SET_EVENT 1
 
-void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, const std::vector<double> event_dates, const double total_sim_time, double *t_blind, int *nsat_max)
+void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, const std::vector<double> event_dates, const double total_sim_time, int *nsat_max, double *cum_t_blind, double *max_t_blind)
 {
     int nsat, sorted_index;
     int ns;
     double last_blind_date;
+    double t_blind;
     std::vector<size_t> indices;
     indices = argsort(event_dates);
 
     ns = event_dates.size();
     nsat = nb_sat_ini;
-    *t_blind = 0;
+    *cum_t_blind = 0;
     *nsat_max = 0;
     last_blind_date = 0;
+    *max_t_blind = 0;
     for (int i = 0; i < ns; i++)
     {
         sorted_index = indices[i];
 
         if (event_types[sorted_index] == RISE_EVENT)
         {
-            if (nsat == 0)
-                *t_blind += event_dates[sorted_index] - last_blind_date;
+            if (nsat == 0) {
+                t_blind = event_dates[sorted_index] - last_blind_date;
+                if (*max_t_blind < t_blind)
+                    *max_t_blind = t_blind;
+                *cum_t_blind += t_blind;
+            }
             nsat += 1;
         }
         else if (event_types[sorted_index] == SET_EVENT)
@@ -47,17 +53,20 @@ void analyse_timeline(const int nb_sat_ini, const std::vector<int> event_types, 
             throw;
         }
 
-        if (*nsat_max < nsat)
+        if (*nsat_max < nsat) {
             *nsat_max = nsat;
+        }
     }
 
-    if (*nsat_max == 0)
-        *t_blind = total_sim_time;
+    if (*nsat_max == 0) {
+        *max_t_blind = total_sim_time;
+        *cum_t_blind = total_sim_time;
+    }
 }
 
 double simulate(double lat, double inc, int nsat, int npla, int pha, double alt_km)
 {
-    double t_blind;
+    double cum_t_blind,max_t_blind;
     int nsat_max;
     std::vector<int> event_types;
     std::vector<double> event_dates;
@@ -119,9 +128,9 @@ double simulate(double lat, double inc, int nsat, int npla, int pha, double alt_
         }
     }
 
-    analyse_timeline(nb_sat, event_types, event_dates, t_sim, &t_blind, &nsat_max);
+    analyse_timeline(nb_sat, event_types, event_dates, t_sim, &nsat_max, &cum_t_blind,&max_t_blind);
 
-    return t_blind;
+    return max_t_blind;
 
 }
 
